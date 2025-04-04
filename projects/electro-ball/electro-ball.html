@@ -110,7 +110,7 @@
             }
         }
 
-        // --- Sphere Geometry Creation --- (Unchanged)
+        // --- Sphere Geometry Creation ---
         function createWireframeSphere(r, detail) {
             let sphere = [];
             for (let i = 0; i < detail; i++) {
@@ -519,16 +519,22 @@
             }
         }
 
-        // --- Interaction Logic --- (Updated for vertical rotation)
+        // --- Interaction Logic --- (Updated for natural dragging on iOS)
         function processInteraction(currX, currY, isFastMovement) {
             let dx = currX - prevMouseX;
             let dy = currY - prevMouseY;
-            rotX += dy * 0.01; // Vertical rotation
-            rotY += dx * 0.01; // Horizontal rotation
-            momX = dy * 0.008; // Adjust momentum for vertical rotation
-            momY = dx * 0.008; // Adjust momentum for horizontal rotation
+
+            // Directly map touch movement to rotation for a more natural feel
+            rotX += dy * 0.005; // Adjust sensitivity for vertical rotation
+            rotY += dx * 0.005; // Adjust sensitivity for horizontal rotation
+
+            // Reduce momentum to make dragging feel more direct
+            momX = dy * 0.004; // Adjust momentum for vertical rotation
+            momY = dx * 0.004; // Adjust momentum for horizontal rotation
+
             let distance = sqrt(dx * dx + dy * dy);
             distanceSinceLastNotch += distance;
+
             let chargeAddFactor = isFastMovement ? 0.4 : 0.2;
             chargeLevel = min(MAX_CHARGE, chargeLevel + distance * chargeAddFactor);
 
@@ -536,6 +542,7 @@
                 let intensity = constrain(distance / 15, 0.1, 1.0);
                 playClickSound(intensity); // Includes haptics now
                 updateIntensityHistory(intensity);
+
                 let staticProb = map(intensity, 0.1, 1.0, 0.2, 0.8) * (chargeLevel / MAX_CHARGE);
                 if (random() < staticProb) {
                     let numStatic = isFastMovement ? floor(random(1, 4)) : 1;
@@ -543,6 +550,7 @@
                         setTimeout(() => createStaticDischarge(), random(i * 20));
                     }
                 }
+
                 let now = millis();
                 if (isFastMovement && chargeLevel > 70 && now - lastBigDischargeTime > BIG_DISCHARGE_MIN_INTERVAL / 2 && random() < 0.08) {
                     createMajorDischarge();
@@ -553,12 +561,13 @@
                 }
                 distanceSinceLastNotch = 0;
             }
+
             prevMouseX = currX;
             prevMouseY = currY;
             lastInteractionTime = millis();
         }
 
-        // --- Event Handlers --- (Unchanged)
+        // --- Event Handlers --- (Updated for smoother dragging)
         function handleMouseDown(e) {
              isDragging = true; prevMouseX = e.clientX; prevMouseY = e.clientY;
              momX = 0; momY = 0; distanceSinceLastNotch = 0; intensityHistory = [];
@@ -579,11 +588,21 @@
          }
          function handleTouchMove(e) {
              if (!isDragging || e.touches.length !== 1) return;
-             let currentX = e.touches[0].clientX; let currentY = e.touches[0].clientY;
-             let distance = dist(currentX, currentY, prevMouseX, prevMouseY);
-             let isFast = distance > 10;
+
+             let currentX = e.touches[0].clientX;
+             let currentY = e.touches[0].clientY;
+
+             // Calculate movement distance
+             let dx = currentX - prevMouseX;
+             let dy = currentY - prevMouseY;
+
+             // Determine if the movement is fast
+             let isFast = sqrt(dx * dx + dy * dy) > 10;
+
+             // Process the interaction
              processInteraction(currentX, currentY, isFast);
-             e.preventDefault();
+
+             e.preventDefault(); // Prevent default scrolling behavior
          }
          function handleTouchEnd(e) { if (isDragging) { isDragging = false; } }
          function handleWheel(e) {
