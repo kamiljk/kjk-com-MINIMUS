@@ -19,6 +19,18 @@
         cursor: pointer;
         transition: color 0.3s;
       }
+
+      /* Add styles for light and dark themes */
+      body {
+        background-color: white; /* Default light theme background */
+        color: black; /* Default light theme text color */
+        transition: background-color 0.3s, color 0.3s;
+      }
+
+      body.dark {
+        background-color: black; /* Dark theme background */
+        color: white; /* Dark theme text color */
+      }
     </style>
     <script>
       // Auto-detect dark/light mode
@@ -41,6 +53,15 @@
         currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
         applyTheme(currentTheme);
       }
+
+      // Add touch support for mobile devices
+      document.addEventListener('DOMContentLoaded', () => {
+        const toggleButton = document.getElementById('themeToggle');
+        toggleButton.addEventListener('touchstart', (e) => {
+          e.preventDefault(); // Prevent default touch behavior
+          toggleTheme();
+        });
+      });
     </script>
   </head>
   <body>
