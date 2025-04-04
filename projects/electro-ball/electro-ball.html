@@ -3,71 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CRACKED Orb // v1</title>
+    <title>Refined Orb // v2</title>
     <style>
         body {
             margin: 0;
             padding: 0;
             overflow: hidden;
-            background-color: #000; /* Keep it dark */
+            background-color: #000000; /* Pure black */
+            color: #e0e0e0; /* Light gray text default */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; /* System font stack */
             touch-action: none;
-            cursor: crosshair; /* Enhance the vibe */
+            cursor: crosshair;
         }
         canvas {
             display: block;
         }
+        /* Cleaner, iOS-inspired back button */
         #backButton {
             position: absolute;
-            top: 15px; /* Slightly more space */
+            top: 15px;
             left: 15px;
-            color: rgba(200, 200, 200, 0.7); /* Subtler */
-            font-size: 28px; /* Bigger */
-            font-family: monospace; /* Techy feel */
+            font-size: 24px; /* Adjusted size */
+            font-weight: 400; /* Regular weight */
+            color: rgba(220, 220, 220, 0.8); /* Lighter, slightly transparent */
+            background-color: rgba(50, 50, 50, 0.3); /* Subtle background */
+            border: none;
+            border-radius: 50%; /* Circle */
+            width: 36px; /* Fixed size */
+            height: 36px; /* Fixed size */
+            line-height: 36px; /* Center symbol vertically */
+            text-align: center; /* Center symbol horizontally */
             cursor: pointer;
             z-index: 1000;
-            background: none;
-            border: none;
             padding: 0;
-            text-shadow: 0 0 5px rgba(150, 180, 255, 0.5); /* Subtle glow */
-            transition: color 0.3s ease, text-shadow 0.3s ease;
+            transition: background-color 0.2s ease, color 0.2s ease;
+            /* Note: Actual Swift UI elements cannot be used in HTML/JS */
         }
         #backButton:hover {
+            background-color: rgba(80, 80, 80, 0.5);
             color: rgba(255, 255, 255, 1);
-            text-shadow: 0 0 10px rgba(180, 210, 255, 0.8);
+        }
+        #backButton:active {
+             background-color: rgba(100, 100, 100, 0.6);
+        }
+        /* Debug Console for Mobile Issues */
+        #debugConsole {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 10px;
+            color: rgba(150, 150, 150, 0.7);
+            background-color: rgba(0,0,0,0.3);
+            padding: 3px 5px;
+            border-radius: 3px;
+            max-width: 80%;
+            max-height: 50px;
+            overflow-y: auto;
+            z-index: 1001; /* Above button */
+            pointer-events: none; /* Don't interfere with interactions */
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
 </head>
 <body>
-    <button id="backButton" onclick="goBack()" aria-label="Go Back">&lt;</button>
+    <button id="backButton" onclick="goBack()" aria-label="Go Back">&#x2190;</button>
+    <div id="debugConsole">Debug Log:<br></div>
     <script>
-        // --- CRACKED Config ---
-        const SPHERE_RADIUS = Math.min(window.innerWidth, window.innerHeight) * 0.3; // Scale radius
-        const SPHERE_DETAIL = 20; // Slightly less detail for performance, more angular look
-        const MOMENTUM_FRICTION = 0.97; // Slightly less friction, more drift
-        const GRAVITY_PULL = 0.00008; // Stronger gravity/tilt effect
-        const ACCEL_MULTIPLIER = 70; // Boost accelerometer influence
-        const NOTCH_DISTANCE_DRAG = 10; // More frequent feedback on drag
-        const NOTCH_DISTANCE_MOMENTUM = 12; // More frequent feedback on momentum
-        const CHARGE_DECAY = 0.988; // Slower decay, stays charged longer
+        // --- Configuration ---
+        const SPHERE_RADIUS = Math.min(window.innerWidth, window.innerHeight) * 0.3;
+        const SPHERE_DETAIL = 22; // Balance between detail and performance
+        const MOMENTUM_FRICTION = 0.975; // Slightly more friction for control
+        const GRAVITY_PULL = 0.00006; // Subtle gravity/tilt
+        const ACCEL_MULTIPLIER = 60; // Moderate accelerometer influence
+        const NOTCH_DISTANCE_DRAG = 12; // Feedback distance during drag
+        const NOTCH_DISTANCE_MOMENTUM = 15; // Feedback distance during momentum phase
+        const CHARGE_DECAY = 0.986; // Moderate decay
         const MAX_CHARGE = 100;
-        const CHARGE_RATE_DRAG = 0.3; // Base charge rate from dragging
-        const CHARGE_RATE_FAST_DRAG_MULT = 1.8; // Multiplier for fast drags
-        const CHARGE_RATE_MOMENTUM = 10; // Charge rate from momentum speed
-        const BIG_DISCHARGE_MIN_INTERVAL = 2000; // Can discharge more often
-        const HEARTBEAT_RATE = 1.0; // Faster pulse
-        const MAX_GLOW_BLUR = 40; // More intense glow
-        const JITTER_INTENSITY = 0.005; // How much it jitters when charged
-        const STAR_COUNT = 200; // Number of background stars
+        const CHARGE_RATE_DRAG = 0.25;
+        const CHARGE_RATE_FAST_DRAG_MULT = 1.6;
+        const CHARGE_RATE_MOMENTUM = 8;
+        const BIG_DISCHARGE_MIN_INTERVAL = 2200;
+        const HEARTBEAT_RATE = 0.8; // Moderate pulse
+        const MAX_GLOW_BLUR = 35;
+        const JITTER_INTENSITY = 0.004;
+        const STAR_COUNT = 150; // Fewer stars for performance/clarity
+        const DRAG_MOMENTUM_FACTOR = 0.08; // How much momentum is imparted on release
 
-        // Haptic Feedback Durations (ms)
-        const HAPTIC_CLICK = 5; // Sharper click
-        const HAPTIC_MAJOR_DISCHARGE = 80; // Slightly longer major buzz
+        // Haptic Feedback Durations (ms) - Adjusted for potential mobile feel
+        const HAPTIC_CLICK = 10; // Slightly longer, maybe more noticeable
+        const HAPTIC_MAJOR_DISCHARGE = 75;
 
-        // --- State Vars ---
+        // --- State Variables ---
         let rotX = 0;
         let rotY = 0;
         let prevMouseX, prevMouseY;
+        let lastDx = 0, lastDy = 0; // Store last movement delta for momentum on release
         let isDragging = false;
         let momX = 0, momY = 0;
         let wireframeSphere;
@@ -75,26 +105,46 @@
         let distanceSinceLastNotch = 0;
         let chargeLevel = 0;
         let discharges = [];
-        let intensityHistory = []; // Kept for discharge logic, could optimize later
-        const INTENSITY_HISTORY_MAX = 15; // Shorter history needed
+        let intensityHistory = [];
+        const INTENSITY_HISTORY_MAX = 15;
         let lastBigDischargeTime = 0;
         let heartbeatPulse = 0;
         let accelX = 0, accelY = 0;
-        let isMobile = /Mobi|Android/i.test(navigator.userAgent);
-        let stars = []; // For background starfield
+        let isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent); // Broader mobile check
+        let stars = [];
+        let debugConsole; // Reference to the debug div
 
-        // --- Audio Vars ---
+        // --- Audio Variables ---
         let audioContext;
         let masterGain;
+        let audioInitialized = false; // Flag to track audio context state
+
+        // --- Utility ---
+        function logDebug(message) {
+            if (!debugConsole) return;
+            const maxLines = 5;
+            let content = debugConsole.innerHTML.replace('Debug Log:<br>', '');
+            let lines = content.split('<br>');
+            lines.push(`${(performance.now() / 1000).toFixed(1)}s: ${message}`);
+            if (lines.length > maxLines) {
+                lines = lines.slice(lines.length - maxLines);
+            }
+            debugConsole.innerHTML = 'Debug Log:<br>' + lines.join('<br>');
+             // Scroll to bottom
+            debugConsole.scrollTop = debugConsole.scrollHeight;
+        }
 
         // --- Setup ---
         function setup() {
             createCanvas(windowWidth, windowHeight, WEBGL);
-            colorMode(HSB, 360, 100, 100, 100); // Use HSB for easier color manipulation
+            // No colorMode(HSB) - using default RGB/RGBA
             noFill();
-            strokeWeight(1.3); // Slightly thicker lines
+            strokeWeight(1.2); // Back to slightly thinner lines
             wireframeSphere = createWireframeSphere(SPHERE_RADIUS, SPHERE_DETAIL);
             generateStars();
+            debugConsole = document.getElementById('debugConsole'); // Get debug div
+
+            logDebug(`Setup complete. Mobile: ${isMobile}`);
 
             let canvas = document.querySelector('canvas');
             canvas.addEventListener('mousedown', handleMouseDown);
@@ -105,30 +155,33 @@
             document.addEventListener('touchend', handleTouchEnd);
             canvas.addEventListener('wheel', handleWheel, { passive: false });
 
-            document.addEventListener('mousedown', initAudio, { once: true });
-            document.addEventListener('touchstart', initAudio, { once: true });
+            // Attempt to initialize audio on first interaction (crucial for mobile)
+            document.body.addEventListener('pointerdown', initAudio, { once: true });
+
 
             if (isMobile && window.DeviceMotionEvent) {
+                logDebug("Adding DeviceMotion listener.");
                 window.addEventListener('devicemotion', handleDeviceMotion);
-                // Give it a stronger initial kick on mobile
-                momX = random(-0.015, 0.015);
-                momY = random(-0.015, 0.015);
-            } else {
-                 // Initial kick for desktop too
-                momX = random(-0.005, 0.005);
-                momY = random(-0.005, 0.005);
+                // Gentle initial kick on mobile
+                momX = random(-0.008, 0.008);
+                momY = random(-0.008, 0.008);
+            } else if (!isMobile) {
+                // Gentle initial kick for desktop
+                momX = random(-0.003, 0.003);
+                momY = random(-0.003, 0.003);
             }
         }
 
-        // --- Starfield ---
+        // --- Starfield --- (Simplified appearance)
         function generateStars() {
             stars = [];
+            let maxDist = max(width, height);
             for (let i = 0; i < STAR_COUNT; i++) {
                 stars.push({
-                    x: random(-width * 1.5, width * 1.5),
-                    y: random(-height * 1.5, height * 1.5),
-                    z: random(-max(width, height), max(width, height)),
-                    size: random(1, 3)
+                    x: random(-width * 1.2, width * 1.2),
+                    y: random(-height * 1.2, height * 1.2),
+                    z: random(-maxDist * 0.8, maxDist * 0.8), // Closer Z range
+                    size: random(0.8, 2.2) // Smaller size range
                 });
             }
         }
@@ -136,16 +189,15 @@
         function drawStars() {
             push();
             noStroke();
-            // Apply subtle parallax based on rotation/momentum
-            let parallaxX = momY * 500; // Inverted axis
-            let parallaxY = momX * 500;
-            translate(parallaxX, parallaxY, -500); // Move stars back
+            // Less pronounced parallax
+            let parallaxX = momY * 200;
+            let parallaxY = momX * 200;
+            translate(parallaxX, parallaxY, -300); // Move stars back less
 
             for (let star of stars) {
-                let alpha = map(star.z, -max(width, height), max(width, height), 10, 70);
-                 // Twinkle effect
-                let twinkle = noise(star.x * 0.1, star.y * 0.1, frameCount * 0.05) * 50 + 50;
-                fill(200, 5, 100, alpha * (twinkle / 100)); // Use HSB, slightly blueish white
+                // Simpler alpha, less twinkle
+                let alpha = map(abs(star.z), 0, max(width, height) * 0.8, 50, 10); // Alpha based on depth
+                fill(200, 200, 200, alpha); // Simple gray stars
                 push();
                 translate(star.x, star.y, star.z);
                 ellipse(0, 0, star.size, star.size);
@@ -187,64 +239,63 @@
         }
 
 
-        // --- Main Draw Loop --- (Enhanced visuals)
+        // --- Main Draw Loop --- (Simplified colors, refined effects)
         function draw() {
-            background(0); // Black background
-            drawStars(); // Draw background stars first
+            background(0);
+            drawStars();
 
-            heartbeatPulse = (sin(frameCount * 0.05 * HEARTBEAT_RATE) + 1) * 0.5; // Faster pulse calculation
-            ambientLight(50); // Slightly brighter ambient
-            pointLight(255, 100, 80, 200, -150, 250); // White point light
+            heartbeatPulse = (sin(frameCount * 0.05 * HEARTBEAT_RATE) + 1) * 0.5;
+            // Subtle lighting
+            ambientLight(60);
+            pointLight(220, 220, 255, 0, 0, SPHERE_RADIUS * 2.5); // Head-on cool light
+            directionalLight(100, 100, 100, 0.5, 0.5, -1); // Gentle fill light
 
-            handleMomentum();
+
+            handleMomentum(); // Handles rotation when not dragging
 
             chargeLevel = max(0, chargeLevel * CHARGE_DECAY);
 
-            // More frequent random static discharges based on charge
-            if (chargeLevel > 10 && random() < 0.015 * (chargeLevel / MAX_CHARGE)) {
-                 createStaticDischarge(0.6 + random(0.6)); // Slightly smaller base size, more variance
+            // Random static discharges
+            if (chargeLevel > 15 && random() < 0.012 * (chargeLevel / MAX_CHARGE)) {
+                 createStaticDischarge(0.7 + random(0.5));
             }
             checkForMajorDischarge();
 
             push();
 
             // Apply jitter based on charge level
-            let jitterX = (chargeLevel / MAX_CHARGE) * JITTER_INTENSITY * (noise(frameCount * 0.5) - 0.5);
-            let jitterY = (chargeLevel / MAX_CHARGE) * JITTER_INTENSITY * (noise(frameCount * 0.5 + 100) - 0.5);
+            let chargeRatio = chargeLevel / MAX_CHARGE;
+            let jitterX = chargeRatio * JITTER_INTENSITY * (noise(frameCount * 0.5) - 0.5);
+            let jitterY = chargeRatio * JITTER_INTENSITY * (noise(frameCount * 0.5 + 100) - 0.5);
 
-            // Apply rotation
+            // Apply rotation (momentum handled in handleMomentum)
             rotateX(rotY + jitterY);
             rotateY(rotX + jitterX);
 
+            // Subtle Glow based on charge - using RGBA
+            let glowIntensity = chargeRatio * MAX_GLOW_BLUR * (0.8 + heartbeatPulse * 0.3);
+            let glowAlpha = map(chargeRatio, 0, 1, 0.05, 0.4) * (0.8 + heartbeatPulse * 0.4); // Adjusted alpha range
 
-            // Dynamic Glow based on charge
-            let chargeRatio = chargeLevel / MAX_CHARGE;
-            let glowIntensity = chargeRatio * MAX_GLOW_BLUR * (0.8 + heartbeatPulse * 0.4); // Pulsating glow
-            let glowHue = map(chargeRatio, 0, 1, 200, 240); // Shift from cyan to blue
-            let glowSaturation = 80 + chargeRatio * 20;
-            let glowBrightness = 90 + chargeRatio * 10;
-            let glowAlpha = map(chargeRatio, 0, 1, 10, 60) * (0.8 + heartbeatPulse * 0.4); // Pulsating alpha
-
+            // Electric blue glow
             drawingContext.shadowBlur = glowIntensity;
-            drawingContext.shadowColor = `hsla(${glowHue}, ${glowSaturation}%, ${glowBrightness}%, ${glowAlpha / 100})`;
+            drawingContext.shadowColor = `rgba(150, 180, 255, ${glowAlpha})`;
 
             drawWireframeSphere(chargeRatio);
             updateAndDrawDischarges();
 
-            drawingContext.shadowBlur = 0; // Reset shadow for other elements if any
+            drawingContext.shadowBlur = 0;
             pop();
         }
 
-        // --- Momentum Handling --- (Boosted effects)
+        // --- Momentum Handling --- (Applies momentum when not dragging)
         function handleMomentum() {
             if (!isDragging) {
-                // Apply accelerometer-based grounding (Boosted)
+                // Apply accelerometer/gravity influence
                 if (isMobile) {
-                    momX += accelY * GRAVITY_PULL * ACCEL_MULTIPLIER; // Invert Y-axis for natural tilt
-                    momY += accelX * GRAVITY_PULL * ACCEL_MULTIPLIER; // X-axis tilt
+                    momX += accelY * GRAVITY_PULL * ACCEL_MULTIPLIER;
+                    momY += accelX * GRAVITY_PULL * ACCEL_MULTIPLIER;
                 } else {
-                     // Keep desktop gravity subtle but present
-                    momY += GRAVITY_PULL;
+                    momY += GRAVITY_PULL; // Subtle downward pull on desktop
                 }
 
                 // Apply momentum to rotation angles
@@ -255,91 +306,80 @@
                 momX *= MOMENTUM_FRICTION;
                 momY *= MOMENTUM_FRICTION;
 
-                // Trigger sound/haptics/charge based on movement speed
+                // Trigger effects based on momentum speed
                 let movement = sqrt(momX * momX + momY * momY);
-                distanceSinceLastNotch += movement * SPHERE_RADIUS * 0.8; // Scale notch distance by radius somewhat
+                if (abs(momX) > 0.0001 || abs(momY) > 0.0001) { // Only if actually moving
+                    distanceSinceLastNotch += movement * SPHERE_RADIUS * 0.6;
 
-                // More aggressive charge from momentum
-                let chargeAddMomentum = constrain(movement * CHARGE_RATE_MOMENTUM, 0, 2.0);
-                chargeLevel = min(MAX_CHARGE, chargeLevel + chargeAddMomentum);
+                    let chargeAddMomentum = constrain(movement * CHARGE_RATE_MOMENTUM, 0, 1.5);
+                    chargeLevel = min(MAX_CHARGE, chargeLevel + chargeAddMomentum);
 
-                if (distanceSinceLastNotch > NOTCH_DISTANCE_MOMENTUM) {
-                    let intensity = constrain(movement * 200, 0.05, 0.8); // Scale intensity calc
-                    playClickSound(intensity * 1.2); // Slightly louder momentum clicks
-                    updateIntensityHistory(intensity);
+                    if (distanceSinceLastNotch > NOTCH_DISTANCE_MOMENTUM) {
+                        let intensity = constrain(movement * 180, 0.05, 0.7);
+                        playClickSound(intensity * 1.1); // Play sound based on momentum
+                        updateIntensityHistory(intensity);
 
-                    // Higher chance of static discharge from momentum
-                    let staticProb = map(chargeLevel, 0, MAX_CHARGE, 0.15, 0.5) * map(intensity, 0.05, 0.8, 0.6, 1.4);
-                    if (random() < staticProb) {
-                        createStaticDischarge();
+                        let staticProb = map(chargeLevel, 0, MAX_CHARGE, 0.1, 0.4) * map(intensity, 0.05, 0.7, 0.5, 1.2);
+                        if (random() < staticProb) {
+                            createStaticDischarge();
+                        }
+                        distanceSinceLastNotch = 0;
                     }
-                    distanceSinceLastNotch = 0;
                 }
-            } else { // If dragging, slowly fade intensity history
-                 if (intensityHistory.length > 0 && frameCount % 8 === 0) { // Faster fade
+
+            } else { // If dragging, fade intensity history
+                 if (intensityHistory.length > 0 && frameCount % 10 === 0) {
                     intensityHistory.shift();
                 }
             }
         }
 
-        // --- Device Motion Handling --- (Increased sensitivity check)
+        // --- Device Motion Handling ---
         function handleDeviceMotion(event) {
+            // logDebug("Device Motion Event"); // Potentially too spammy
             if (event.accelerationIncludingGravity) {
                 accelX = event.accelerationIncludingGravity.x / 10;
                 accelY = event.accelerationIncludingGravity.y / 10;
 
-                // Trigger haptics on slightly smaller motion
-                if (Math.abs(accelX) > 0.3 || Math.abs(accelY) > 0.3) {
-                    // Throttle haptic triggers from accelerometer to avoid constant buzz
-                    if (frameCount % 5 === 0) {
+                // Trigger haptics on significant motion (throttled)
+                if (Math.abs(accelX) > 0.4 || Math.abs(accelY) > 0.4) {
+                    if (frameCount % 6 === 0) { // Throttle haptic triggers
                        triggerHaptic('click');
                     }
                 }
+            } else {
+                 logDebug("No accelerationIncludingGravity data");
             }
         }
 
-        // --- Drawing Functions ---
+        // --- Drawing Functions --- (Monochromatic focus)
         function drawWireframeSphere(chargeRatio) {
-            // Dynamic HSB Color based on charge and pulse
-            let baseHue = 190; // Teal/Cyan base
-            let targetHue = 240; // Blue target
-            let currentHue = lerp(baseHue, targetHue, chargeRatio * chargeRatio); // Faster shift towards blue
+            // Base color: Light gray, pulsing slightly
+            let baseGray = 180 + heartbeatPulse * 20;
+            // Charge color: Adds blue tint and brightness
+            let chargeBoost = chargeRatio * chargeRatio * 75; // Non-linear boost
 
-            let baseSat = 50;
-            let targetSat = 90;
-            let currentSat = lerp(baseSat, targetSat, chargeRatio);
+            let r = baseGray;
+            let g = baseGray + chargeBoost * 0.5; // Less green boost
+            let b = baseGray + chargeBoost;       // More blue boost
+            let alpha = 200 + chargeBoost * 0.5; // Slightly increase alpha with charge
 
-            let baseBright = 60 + heartbeatPulse * 20; // Pulsating brightness base
-            let targetBright = 95;
-            let currentBright = lerp(baseBright, targetBright, chargeRatio);
-
-            let baseAlpha = 60;
-            let targetAlpha = 95;
-            let currentAlpha = lerp(baseAlpha, targetAlpha, chargeRatio) + heartbeatPulse * 5;
-
+            // No vertex displacement for cleaner look
             for (let line of wireframeSphere) {
                 beginShape();
                 for (let v of line.points) {
-                    // Add slight vertex displacement based on charge for instability effect
-                    let displaceMag = chargeRatio * chargeRatio * 1.5 * noise(v.x * 0.1, v.y*0.1, v.z*0.1 + frameCount * 0.05);
-                    let displacedV = p5.Vector.add(v, p5.Vector.random3D().mult(displaceMag));
-
-                    stroke(currentHue, currentSat, currentBright, currentAlpha);
-                    vertex(displacedV.x, displacedV.y, displacedV.z);
+                    stroke(constrain(r, 0, 255), constrain(g, 0, 255), constrain(b, 0, 255), constrain(alpha, 180, 255));
+                    vertex(v.x, v.y, v.z);
                 }
-                // Connect last to first for latitude lines
                 if (line.type === 'latitude' && line.points.length > 0) {
                      let first = line.points[0];
-                     let displaceMag = chargeRatio * chargeRatio * 1.5 * noise(first.x * 0.1, first.y*0.1, first.z*0.1 + frameCount * 0.05);
-                     let displacedV = p5.Vector.add(first, p5.Vector.random3D().mult(displaceMag));
-                     vertex(displacedV.x, displacedV.y, displacedV.z);
+                     vertex(first.x, first.y, first.z);
                 }
                 endShape();
             }
         }
-        // --- Update/Draw Discharges (Minor visual tweaks maybe) ---
+
         function updateAndDrawDischarges() {
-            // ... (mostly same as original) ...
              for (let i = discharges.length - 1; i >= 0; i--) {
                 let d = discharges[i];
                 d.life--;
@@ -347,71 +387,82 @@
                     discharges.splice(i, 1);
                     continue;
                 }
-                if (d.type === 'static') {
-                    drawStaticDischarge(d);
-                } else if (d.type === 'major') {
-                    drawMajorDischarge(d);
-                }
+                // Apply global rotation to discharge points BEFORE drawing
+                // This makes them stick to the sphere surface
+                 push();
+                 rotateX(rotY); // Apply current sphere rotation
+                 rotateY(rotX);
+                 if (d.type === 'static') {
+                     drawStaticDischarge(d);
+                 } else if (d.type === 'major') {
+                     drawMajorDischarge(d);
+                 }
+                 pop(); // Restore drawing matrix
             }
         }
+
         function drawStaticDischarge(d) {
             let lifeRatio = d.life / d.maxLife;
-            let flicker = 0.7 + 0.4 * noise(frameCount * 0.4 + d.variation * 10); // More flicker
-            let alpha = map(sqrt(lifeRatio), 0, 1, 0, 80) * flicker; // HSB alpha range 0-100
-            strokeWeight(d.weight * 1.1); // Slightly thicker static
-            // Color (using HSB) - More electric blue/violet
-            stroke(250 + flicker * 20, 80 + flicker * 15, 100, alpha);
+            let flicker = 0.8 + 0.3 * noise(frameCount * 0.35 + d.variation * 10);
+            let alpha = map(sqrt(lifeRatio), 0, 1, 0, 180) * flicker; // Lower max alpha
+            strokeWeight(d.weight * 0.9); // Thinner static
+            // Color: Electric blue/white
+            stroke(180 + 75 * flicker, 200 + 55 * flicker, 255, alpha);
             for (let seg of d.segments) {
                 line(seg.p1.x, seg.p1.y, seg.p1.z, seg.p2.x, seg.p2.y, seg.p2.z);
             }
         }
-         function drawMajorDischarge(d) {
+
+        function drawMajorDischarge(d) {
             let lifeRatio = d.life / d.maxLife;
             let coreAlpha, glowAlpha, glowBlur;
 
-            // Intense flash phase
-            if (lifeRatio > 0.7) {
-                let flashRatio = map(lifeRatio, 1.0, 0.7, 0, 1);
-                coreAlpha = 100; // Full bright HSB
-                glowAlpha = 80 + 20 * flashRatio; // Intense glow alpha
-                glowBlur = 20 + 30 * (1 - flashRatio); // Wider glow initially
-            } else { // Fade out phase
-                coreAlpha = map(lifeRatio, 0, 0.7, 0, 100);
-                glowAlpha = map(lifeRatio, 0, 0.7, 0, 80);
-                glowBlur = map(lifeRatio, 0, 0.7, 5, 25); // Shrink glow as it fades
+            // Flash phase
+            if (lifeRatio > 0.65) {
+                let flashRatio = map(lifeRatio, 1.0, 0.65, 0, 1);
+                coreAlpha = 255; // Full white
+                glowAlpha = 150 + 100 * flashRatio; // Intense glow
+                glowBlur = 15 + 25 * (1 - flashRatio); // Wider glow
+            } else { // Fade out
+                coreAlpha = map(lifeRatio, 0, 0.65, 0, 255);
+                glowAlpha = map(lifeRatio, 0, 0.65, 0, 150);
+                glowBlur = map(lifeRatio, 0, 0.65, 5, 20);
             }
 
-            let time = frameCount * 0.15 + d.variation * 50; // Faster flicker time
-            let flicker = 0.5 + 0.6 * noise(time * 3.5) * noise(time * 0.9 + 100); // More extreme flicker
+            let time = frameCount * 0.12 + d.variation * 50;
+            let flicker = 0.6 + 0.5 * noise(time * 3) * noise(time * 0.8 + 100);
             coreAlpha *= flicker;
-            glowAlpha *= flicker * 0.8; // Glow alpha also flickers, slightly less
+            glowAlpha *= flicker * 0.7;
 
-            // Core Color (HSB - Bright White/Violet)
-            let coreHue = 270 + flicker * 20;
-            let coreSat = 30 + flicker * 30;
-            let coreBright = 100;
+            // Core Color: Bright White / pale blue
+            let r = 230 + 25 * flicker;
+            let g = 230 + 25 * flicker;
+            let b = 255;
 
-            // Apply glow via shadow context for branches
+            // Glow Color: Electric Blue
+            let glowR = 150;
+            let glowG = 180;
+            let glowB = 255;
+
             drawingContext.shadowBlur = glowBlur;
-            drawingContext.shadowColor = `hsla(${coreHue}, ${coreSat + 20}%, ${coreBright}%, ${glowAlpha / 100})`;
+            drawingContext.shadowColor = `rgba(${glowR}, ${glowG}, ${glowB}, ${glowAlpha / 255})`;
 
-            drawLightningBranch(d.mainBranch, coreHue, coreSat, coreBright, coreAlpha);
+            // Draw branches (core color only, glow handled by shadow)
+            drawLightningBranch(d.mainBranch, r, g, b, coreAlpha);
             for (let branch of d.secondaryBranches) {
-                 drawLightningBranch(branch, coreHue, coreSat, coreBright, coreAlpha * 0.8); // Secondary slightly dimmer
+                drawLightningBranch(branch, r, g, b, coreAlpha * 0.8);
             }
 
-             drawingContext.shadowBlur = 0; // Reset shadow IMPORTANTLY here
-         }
-         // Removed redundant glow drawing from branch, handled by shadowBlur now
-         function drawLightningBranch(branch, hue, sat, bright, coreAlpha) {
+            drawingContext.shadowBlur = 0; // Reset shadow
+        }
+
+        function drawLightningBranch(branch, r, g, b, coreAlpha) {
              for (let seg of branch.segments) {
-                 // Draw only the core bright line
-                 strokeWeight(seg.width * 1.1); // Slightly thicker core
-                 stroke(hue, sat, bright, coreAlpha);
+                 strokeWeight(seg.width * 0.9); // Thinner core
+                 stroke(r, g, b, coreAlpha);
                  line(seg.p1.x, seg.p1.y, seg.p1.z, seg.p2.x, seg.p2.y, seg.p2.z);
             }
          }
-
 
         // --- Intensity Tracking (Unchanged Logic) ---
         function updateIntensityHistory(intensity) { /* ... same ... */
@@ -421,255 +472,317 @@
             }
         }
         function getAverageIntensity() { /* ... same ... */
-             if (intensityHistory.length < 3) return 0; // Need fewer samples
+             if (intensityHistory.length < 3) return 0;
             let sum = intensityHistory.reduce((a, b) => a + b, 0);
             return sum / intensityHistory.length;
         }
 
-        // --- Discharge Creation Logic ---
+        // --- Discharge Creation Logic --- (Slightly toned down frequency)
         function checkForMajorDischarge() {
             let now = millis();
             let avgIntensity = getAverageIntensity();
-            // Lower threshold for intensity, higher random chance
-            if (chargeLevel > 70 && // Slightly lower charge req
+            if (chargeLevel > 75 &&
                 now - lastBigDischargeTime > BIG_DISCHARGE_MIN_INTERVAL &&
-                avgIntensity > 0.45 && // Lower intensity threshold
-                random() < 0.08) { // Higher base chance
+                avgIntensity > 0.50 && // Slightly higher intensity needed
+                random() < 0.06) { // Slightly lower chance
                  createMajorDischarge();
                  playMajorDischargeSound();
                  lastBigDischargeTime = now;
-                 chargeLevel *= 0.4; // Drain more charge
-                 intensityHistory = []; // Reset intensity faster
+                 chargeLevel *= 0.45; // Moderate charge drain
+                 intensityHistory = [];
             }
         }
-        function createStaticDischarge(sizeMultiplier = 1) {
-            // ... (mostly same, maybe slightly longer length range) ...
+        // --- createStaticDischarge, createMajorDischarge, createLightningBranch ---
+        // (These are mostly unchanged structurally from the previous version,
+        // but the visual output is affected by the draw functions above)
+        function createStaticDischarge(sizeMultiplier = 1) { /* ... (same logic as cracked_orb_v1) ... */
              let phi = random(TWO_PI);
              let theta = acos(random(-1, 1));
              let start = p5.Vector.fromAngles(theta, phi, SPHERE_RADIUS);
              let dirOut = start.copy().normalize();
-             // Slightly increased length variance
-             let length = random(10, 25) * map(chargeLevel, 0, MAX_CHARGE, 0.7, 1.4) * sizeMultiplier;
-             let numSegments = floor(random(2, 6)); // More segments possible
+             let length = random(8, 22) * map(chargeLevel, 0, MAX_CHARGE, 0.7, 1.3) * sizeMultiplier;
+             let numSegments = floor(random(2, 5));
              let segments = [];
              let currentPoint = start.copy();
-             let overallDir = p5.Vector.add(dirOut, p5.Vector.random3D().mult(0.6)).normalize(); // More deviation allowed
+             let overallDir = p5.Vector.add(dirOut, p5.Vector.random3D().mult(0.5)).normalize();
             for (let i = 0; i < numSegments; i++) {
-                 let segmentLength = length / numSegments * random(0.7, 1.3); // More length variance per segment
-                 let deviation = p5.Vector.random3D().mult(segmentLength * 0.5 * sin(map(i, 0, numSegments, 0, PI))); // More deviation
+                 let segmentLength = length / numSegments * random(0.8, 1.2);
+                 let deviation = p5.Vector.random3D().mult(segmentLength * 0.45 * sin(map(i, 0, numSegments, 0, PI)));
                  let nextPoint = p5.Vector.add(currentPoint, p5.Vector.add(overallDir.copy().mult(segmentLength), deviation));
                  segments.push({ p1: currentPoint.copy(), p2: nextPoint.copy() });
                  currentPoint = nextPoint;
              }
-             let lifetime = 10 + random(10); // Slightly longer lifespan avg
+             let lifetime = 9 + random(9);
              discharges.push({
                  type: 'static', segments: segments, life: lifetime, maxLife: lifetime,
-                 variation: random(1000), weight: random(0.7, 1.4) // Wider weight variance
+                 variation: random(1000), weight: random(0.7, 1.3)
             });
         }
-        function createMajorDischarge() {
-            // ... (mostly same, maybe longer/more branches) ...
-              let phi = random(TWO_PI);
+        function createMajorDischarge() { /* ... (same logic as cracked_orb_v1) ... */
+             let phi = random(TWO_PI);
              let theta = acos(random(-1, 1));
              let start = p5.Vector.fromAngles(theta, phi, SPHERE_RADIUS);
              let dirOut = start.copy().normalize();
-             let mainLength = random(60, 120) * map(chargeLevel, 50, MAX_CHARGE, 0.8, 1.6); // Longer potential
-             let mainIntensity = 1.0 + random(0.2); // Slightly variable intensity
+             let mainLength = random(55, 110) * map(chargeLevel, 50, MAX_CHARGE, 0.8, 1.5);
+             let mainIntensity = 1.0 + random(0.1); // Less intensity variation
              let mainBranch = createLightningBranch(start, dirOut, mainLength, mainIntensity);
              let secondaryBranches = [];
-             let numSecondary = floor(random(3, 7)); // More secondary branches
+             let numSecondary = floor(random(2, 6)); // Moderate branches
              for (let i = 0; i < numSecondary; i++) {
-                 let forkIndex = floor(pow(random(), 1.4) * (mainBranch.segments.length - 2)) + 1; // Slightly different distribution
-                 if (forkIndex >= mainBranch.segments.length) forkIndex = mainBranch.segments.length -1; // Bounds check
+                 let forkIndex = floor(pow(random(), 1.5) * (mainBranch.segments.length - 2)) + 1;
+                 if (forkIndex >= mainBranch.segments.length) forkIndex = mainBranch.segments.length -1;
                  if (forkIndex < 0) forkIndex = 0;
                  let forkSegment = mainBranch.segments[forkIndex];
-                 let forkPoint = p5.Vector.lerp(forkSegment.p1, forkSegment.p2, random(0.1, 0.9)); // Wider fork range
+                 let forkPoint = p5.Vector.lerp(forkSegment.p1, forkSegment.p2, random(0.15, 0.85));
                  let mainSegDir = p5.Vector.sub(forkSegment.p2, forkSegment.p1).normalize();
                  let forkDir = p5.Vector.random3D().cross(mainSegDir).normalize();
-                 forkDir.lerp(dirOut, 0.3); // Less bias towards outward dir
-                 forkDir.rotate(random(-0.7, 0.7)); // More angular variance
-                 let branchLength = mainLength * random(0.25, 0.6) * (1 - forkIndex / mainBranch.segments.length); // Longer secondary avg
-                 let branchIntensity = mainIntensity * random(0.4, 0.9); // Wider secondary intensity
+                 forkDir.lerp(dirOut, 0.35);
+                 forkDir.rotate(random(-0.6, 0.6));
+                 let branchLength = mainLength * random(0.2, 0.55) * (1 - forkIndex / mainBranch.segments.length);
+                 let branchIntensity = mainIntensity * random(0.45, 0.85);
                  secondaryBranches.push(createLightningBranch(forkPoint, forkDir, branchLength, branchIntensity));
              }
-             let lifetime = 25 + random(20); // Longer major discharge lifetime
+             let lifetime = 22 + random(18); // Moderate lifetime
              discharges.push({
                  type: 'major', mainBranch: mainBranch, secondaryBranches: secondaryBranches,
                  life: lifetime, maxLife: lifetime, variation: random(1000)
              });
         }
-        function createLightningBranch(start, direction, length, intensity) {
-            // ... (mostly same, maybe tweak width) ...
-             let segments = [];
-            let numSegments = max(4, floor(length / 7) + floor(random(0, 5))); // More segments
+        function createLightningBranch(start, direction, length, intensity) { /* ... (same logic as cracked_orb_v1) ... */
+            let segments = [];
+            let numSegments = max(3, floor(length / 7.5) + floor(random(0, 4)));
             let currentPoint = start.copy();
             let targetEnd = p5.Vector.add(start, direction.copy().setMag(length));
-            let baseWidth = 1.8 + intensity * 1.8; // Thicker base width
+            let baseWidth = 1.6 + intensity * 1.6; // Moderate width
             for (let i = 1; i <= numSegments; i++) {
                  let t = i / numSegments;
                  let targetPoint = p5.Vector.lerp(start, targetEnd, t);
-                 let deviationScale = length * 0.09 * sin(t * PI) * random(0.6, 1.4); // More deviation
+                 let deviationScale = length * 0.085 * sin(t * PI) * random(0.7, 1.3);
                  let deviation = p5.Vector.random3D().setMag(deviationScale);
                  targetPoint.add(deviation);
-                 let width = baseWidth * (1 - pow(t, 1.4)) + 0.4; // Width tapers slightly differently
+                 let width = baseWidth * (1 - pow(t, 1.45)) + 0.35;
                  segments.push({ p1: currentPoint.copy(), p2: targetPoint.copy(), width: width });
                  currentPoint = targetPoint;
             }
              return { segments: segments, intensity: intensity };
         }
 
-        // --- Simplified Audio --- (CRACKED Sounds)
-        async function initAudio() { /* ... same ... */
-            if (!audioContext) {
-                try {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    await audioContext.resume();
-                    masterGain = audioContext.createGain();
-                    masterGain.gain.value = 0.7; // Slightly louder master
-                    masterGain.connect(audioContext.destination);
-                } catch (e) {
-                    console.error("Web Audio API could not start.", e);
-                    audioContext = null;
-                }
+        // --- Audio Initialization and Playback --- (Added logging, error handling)
+        async function initAudio() {
+            // Prevent multiple initializations
+            if (audioInitialized || (audioContext && audioContext.state === 'running')) {
+                 // logDebug("Audio already initialized.");
+                 return;
             }
+             logDebug("Attempting to initialize Audio...");
+             // Check if context already exists but might be suspended
+             if (!audioContext) {
+                 try {
+                     audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                     logDebug("AudioContext created.");
+                 } catch (e) {
+                     logDebug(`Error creating AudioContext: ${e.message}`);
+                     console.error("Error creating AudioContext:", e);
+                     audioContext = null; // Ensure it's null if creation failed
+                     return; // Cannot proceed without context
+                 }
+             }
+
+             // Resume context if needed (especially crucial on user interaction)
+             if (audioContext.state === 'suspended') {
+                 try {
+                     await audioContext.resume();
+                     logDebug(`AudioContext resumed. State: ${audioContext.state}`);
+                 } catch (e) {
+                     logDebug(`Error resuming AudioContext: ${e.message}`);
+                     console.error("Error resuming AudioContext:", e);
+                     // Don't nullify context here, might resume later
+                 }
+             }
+
+             // Create Gain node if it doesn't exist and context is running
+             if (!masterGain && audioContext && audioContext.state === 'running') {
+                 try {
+                     masterGain = audioContext.createGain();
+                     masterGain.gain.setValueAtTime(0.75, audioContext.currentTime); // Slightly increased default volume
+                     masterGain.connect(audioContext.destination);
+                     logDebug("Master Gain created and connected.");
+                 } catch (e) {
+                      logDebug(`Error creating Master Gain: ${e.message}`);
+                      console.error("Error creating Master Gain:", e);
+                      masterGain = null;
+                 }
+             }
+
+             if (audioContext && audioContext.state === 'running' && masterGain) {
+                 audioInitialized = true;
+                 logDebug("Audio Initialization successful.");
+             } else {
+                  logDebug(`Audio Init incomplete. State: ${audioContext?.state}, Gain: ${!!masterGain}`);
+             }
         }
 
+
         function playClickSound(intensity = 0.5) {
-            triggerHaptic('click');
-            if (!audioContext || !masterGain) return;
+            triggerHaptic('click'); // Attempt haptic regardless of audio state
+            if (!audioContext || audioContext.state !== 'running' || !masterGain) {
+                 // logDebug("Skipping click sound: Audio not ready.");
+                 return;
+            }
 
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            const now = audioContext.currentTime;
+            try {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                const now = audioContext.currentTime;
 
-            let chargeFactor = chargeLevel / MAX_CHARGE;
-            let baseFreq = 800 + chargeFactor * 400; // Higher base frequency
-            let freq = baseFreq + random(-150, 150) * intensity; // Wider freq range based on intensity
-            osc.frequency.setValueAtTime(freq, now);
-            osc.frequency.exponentialRampToValueAtTime(freq * 0.6, now + 0.03); // Pitch drop
-            osc.type = 'square'; // Sharper 'square' or 'sawtooth' wave
+                let chargeFactor = chargeLevel / MAX_CHARGE;
+                let baseFreq = 600 + chargeFactor * 300; // Lower base freq
+                let freq = baseFreq + random(-100, 100) * intensity;
+                osc.frequency.setValueAtTime(freq, now);
+                osc.frequency.exponentialRampToValueAtTime(freq * 0.7, now + 0.04); // Slower pitch drop
+                osc.type = 'triangle'; // Softer triangle wave
 
-            let peakVol = 0.06 * intensity * (1 + chargeFactor * 0.8); // Slightly louder, more charge influence
-            gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(peakVol, now + 0.002); // Faster attack
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03); // Sharper exponential decay
+                let peakVol = 0.07 * intensity * (1 + chargeFactor * 0.6); // Moderate volume
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(peakVol, now + 0.003);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04); // Slightly longer decay
 
-            osc.connect(gain);
-            gain.connect(masterGain);
-            osc.start(now);
-            osc.stop(now + 0.035);
+                osc.connect(gain);
+                gain.connect(masterGain);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            } catch (e) {
+                logDebug(`Click sound error: ${e.message}`);
+                console.error("Error playing click sound:", e);
+            }
         }
 
         function playMajorDischargeSound() {
             triggerHaptic('major');
-            if (!audioContext || !masterGain) return;
-            const now = audioContext.currentTime;
+            if (!audioContext || audioContext.state !== 'running' || !masterGain) {
+                 // logDebug("Skipping discharge sound: Audio not ready.");
+                 return;
+            }
 
-            // Low frequency burst (more intense)
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            osc.type = 'sawtooth'; // Harsher sawtooth wave
-            let startFreq = 90 + random(-15, 15);
-            osc.frequency.setValueAtTime(startFreq, now);
-            osc.frequency.exponentialRampToValueAtTime(startFreq * 0.5, now + 0.18); // Deeper drop
+            try {
+                const now = audioContext.currentTime;
 
-            let peakVol = 0.35; // Louder!
-            gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(peakVol, now + 0.008); // Slightly faster attack
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2); // Longer, harsher decay
+                // Low frequency burst
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.type = 'sawtooth';
+                let startFreq = 80 + random(-10, 10);
+                osc.frequency.setValueAtTime(startFreq, now);
+                osc.frequency.exponentialRampToValueAtTime(startFreq * 0.6, now + 0.15);
 
-            osc.connect(gain);
-            gain.connect(masterGain);
-            osc.start(now);
-            osc.stop(now + 0.2);
+                let peakVol = 0.3; // Moderate volume
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(peakVol, now + 0.006);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
 
-            // More intense noise burst
-            const noiseSource = audioContext.createBufferSource();
-            const noiseGain = audioContext.createGain();
-            const bufferSize = audioContext.sampleRate * 0.1; // Longer noise duration
-            const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
-            const output = noiseBuffer.getChannelData(0);
-            for (let i = 0; i < bufferSize; i++) { output[i] = Math.random() * 2 - 1; }
-            noiseSource.buffer = noiseBuffer;
+                osc.connect(gain);
+                gain.connect(masterGain);
+                osc.start(now);
+                osc.stop(now + 0.18);
 
-            noiseGain.gain.setValueAtTime(0, now);
-            noiseGain.gain.linearRampToValueAtTime(0.25, now + 0.005); // Louder noise peak
-            noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12); // Longer noise decay
+                // Noise burst
+                const noiseSource = audioContext.createBufferSource();
+                const noiseGain = audioContext.createGain();
+                const bufferSize = audioContext.sampleRate * 0.08; // Moderate duration
+                const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) { output[i] = Math.random() * 2 - 1; }
+                noiseSource.buffer = noiseBuffer;
 
-            // Add a bandpass filter to the noise for more 'crack'
-            const noiseFilter = audioContext.createBiquadFilter();
-            noiseFilter.type = "bandpass";
-            noiseFilter.frequency.setValueAtTime(1500 + random(-500, 500), now); // Center frequency for crackle
-            noiseFilter.Q.setValueAtTime(5 + random(0,5), now); // Resonance
+                noiseGain.gain.setValueAtTime(0, now);
+                noiseGain.gain.linearRampToValueAtTime(0.2, now + 0.004); // Moderate peak
+                noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1); // Moderate decay
 
-            noiseSource.connect(noiseFilter);
-            noiseFilter.connect(noiseGain);
-            noiseGain.connect(masterGain);
-            noiseSource.start(now);
-            noiseSource.stop(now + 0.12);
+                const noiseFilter = audioContext.createBiquadFilter();
+                noiseFilter.type = "bandpass";
+                noiseFilter.frequency.setValueAtTime(1800 + random(-400, 400), now);
+                noiseFilter.Q.setValueAtTime(6 + random(0,4), now);
+
+                noiseSource.connect(noiseFilter);
+                noiseFilter.connect(noiseGain);
+                noiseGain.connect(masterGain);
+                noiseSource.start(now);
+                noiseSource.stop(now + 0.1);
+            } catch (e) {
+                 logDebug(`Discharge sound error: ${e.message}`);
+                 console.error("Error playing discharge sound:", e);
+            }
         }
 
 
-        // --- Haptic Feedback --- (Unchanged Logic, adjusted constants)
-        function triggerHaptic(type) { /* ... same ... */
-            if ('vibrate' in navigator) {
+        // --- Haptic Feedback --- (Added logging)
+        function triggerHaptic(type) {
+            // logDebug(`Attempting Haptic: ${type}`); // Can be spammy
+            if ('vibrate' in navigator && navigator.vibrate) { // Check method exists
                 try {
                     if (type === 'click') {
                         navigator.vibrate(HAPTIC_CLICK);
                     } else if (type === 'major') {
-                        // More complex pattern for major discharge
-                         navigator.vibrate([HAPTIC_MAJOR_DISCHARGE * 0.6, 30, HAPTIC_MAJOR_DISCHARGE * 0.4]);
+                        navigator.vibrate([HAPTIC_MAJOR_DISCHARGE * 0.6, 40, HAPTIC_MAJOR_DISCHARGE * 0.4]); // Adjusted pattern
                     }
+                    // logDebug(`Haptic ${type} sent.`); // Confirmation
                 } catch (e) {
-                    // console.warn("Haptic feedback failed:", e); // Keep it quiet mostly
+                    logDebug(`Haptic error: ${e.message}`);
+                    // console.warn("Haptic feedback failed:", e);
                 }
+            } else {
+                 // logDebug("Haptic API not supported."); // Log only once maybe?
             }
+            /*
+             * NOTE on Mobile Haptics:
+             * - iOS Safari has very limited support for the Vibration API. It might not work reliably or at all.
+             * - Android Chrome generally supports it, but it requires user interaction first.
+             * - Device power-saving modes might disable vibration.
+             * - The actual feel depends heavily on the device's vibration motor.
+             */
         }
 
-        // --- Interaction Logic --- (More aggressive charging/effects)
+        // --- Interaction Logic --- (Separated drag rotation from release momentum)
         function processInteraction(currX, currY, isFastMovement) {
             let dx = currX - prevMouseX;
             let dy = currY - prevMouseY;
 
-            // Slightly increased sensitivity / directness
-            let moveScale = 0.006;
+            // Direct rotation based on drag movement
+            let moveScale = 0.0055; // Adjusted sensitivity
             rotX += dy * moveScale;
-            rotY += dx * moveScale; // Corrected: was dx -> rotY
+            rotY += dx * moveScale; // dx affects rotation around Y-axis (horizontal spin)
 
-            // Apply reduced momentum during drag
-            let momScale = 0.005;
-            momX = dy * momScale;
-            momY = dx * momScale;
+            // Keep track of the last movement delta for momentum calculation on release
+            lastDx = dx;
+            lastDy = dy;
 
+            // --- Effects based on drag ---
             let distance = sqrt(dx * dx + dy * dy);
             distanceSinceLastNotch += distance;
 
-            // More aggressive charging
             let chargeAddFactor = CHARGE_RATE_DRAG * (isFastMovement ? CHARGE_RATE_FAST_DRAG_MULT : 1);
             chargeLevel = min(MAX_CHARGE, chargeLevel + distance * chargeAddFactor);
 
             if (distanceSinceLastNotch > NOTCH_DISTANCE_DRAG) {
-                let intensity = constrain(distance / 12, 0.1, 1.2); // Higher max intensity
-                playClickSound(intensity);
+                let intensity = constrain(distance / 14, 0.1, 1.0); // Moderate intensity calc
+                playClickSound(intensity); // Play sound during drag
                 updateIntensityHistory(intensity);
 
-                 // Higher probability and number of static discharges on fast drag
-                let staticProb = map(intensity, 0.1, 1.2, 0.25, 0.9) * (chargeLevel / MAX_CHARGE);
+                let staticProb = map(intensity, 0.1, 1.0, 0.2, 0.7) * (chargeLevel / MAX_CHARGE);
                 if (random() < staticProb) {
-                    let numStatic = isFastMovement ? floor(random(1, 5)) : 1; // More sparks on fast move
+                    let numStatic = isFastMovement ? floor(random(1, 4)) : 1;
                     for (let i = 0; i < numStatic; i++) {
-                        // Stagger the static discharges slightly
-                        setTimeout(() => createStaticDischarge(isFastMovement ? 1.2 : 1.0), random(i * 15));
+                        setTimeout(() => createStaticDischarge(isFastMovement ? 1.1 : 1.0), random(i * 20));
                     }
                 }
 
+                // Check for major discharge during fast drag
                 let now = millis();
-                // Higher chance of major discharge on fast drag
-                if (isFastMovement && chargeLevel > 65 && now - lastBigDischargeTime > BIG_DISCHARGE_MIN_INTERVAL / 2.5 && random() < 0.12) {
+                if (isFastMovement && chargeLevel > 70 && now - lastBigDischargeTime > BIG_DISCHARGE_MIN_INTERVAL / 2 && random() < 0.1) {
                     createMajorDischarge();
                     playMajorDischargeSound();
                     lastBigDischargeTime = now;
-                    chargeLevel *= 0.5; // Keep significant charge drain
+                    chargeLevel *= 0.5;
                     intensityHistory = [];
                 }
                 distanceSinceLastNotch = 0;
@@ -680,70 +793,117 @@
             lastInteractionTime = millis();
         }
 
-        // --- Event Handlers --- (Minor changes for fast movement detection)
-         function handleMouseDown(e) { /* ... same ... */
-              isDragging = true; prevMouseX = e.clientX; prevMouseY = e.clientY;
-             momX = 0; momY = 0; distanceSinceLastNotch = 0; intensityHistory = [];
+        // --- Event Handlers ---
+        function handleMouseDown(e) {
+             isDragging = true;
+             prevMouseX = e.clientX;
+             prevMouseY = e.clientY;
+             momX = 0; // Stop existing momentum
+             momY = 0;
+             lastDx = 0; // Reset last movement
+             lastDy = 0;
+             distanceSinceLastNotch = 0;
+             intensityHistory = []; // Clear history on new drag
              e.preventDefault();
+             logDebug("Mouse Down");
          }
+
          function handleMouseMove(e) {
              if (!isDragging) return;
-             // More sensitive fast movement check
-             let isFast = abs(e.movementX) + abs(e.movementY) > 12;
+             let isFast = abs(e.movementX) + abs(e.movementY) > 10; // Moderate fast threshold
              processInteraction(e.clientX, e.clientY, isFast);
          }
-         function handleMouseUp() { /* ... same ... */ if (isDragging) { isDragging = false; } }
-         function handleTouchStart(e) { /* ... same ... */
-             if (e.touches.length === 1) {
-                 isDragging = true; prevMouseX = e.touches[0].clientX; prevMouseY = e.touches[0].clientY;
-                 momX = 0; momY = 0; distanceSinceLastNotch = 0; intensityHistory = [];
-                 e.preventDefault();
+
+         function handleMouseUp(e) {
+             if (isDragging) {
+                 isDragging = false;
+                 // Apply momentum based on the last movement before release
+                 momX = lastDy * DRAG_MOMENTUM_FACTOR; // lastDy affects momentum around X-axis
+                 momY = lastDx * DRAG_MOMENTUM_FACTOR; // lastDx affects momentum around Y-axis
+                 logDebug(`Mouse Up - Momentum set: (${momX.toFixed(4)}, ${momY.toFixed(4)})`);
              }
          }
-        function handleTouchMove(e) {
+
+         function handleTouchStart(e) {
+             if (e.touches.length === 1) {
+                 isDragging = true;
+                 prevMouseX = e.touches[0].clientX;
+                 prevMouseY = e.touches[0].clientY;
+                 momX = 0; // Stop existing momentum
+                 momY = 0;
+                 lastDx = 0; // Reset last movement
+                 lastDy = 0;
+                 distanceSinceLastNotch = 0;
+                 intensityHistory = [];
+                 e.preventDefault(); // Prevent default touch actions like scrolling
+                 logDebug("Touch Start");
+             }
+         }
+
+         function handleTouchMove(e) {
              if (!isDragging || e.touches.length !== 1) return;
              let currentX = e.touches[0].clientX;
              let currentY = e.touches[0].clientY;
              let dx = currentX - prevMouseX;
              let dy = currentY - prevMouseY;
-             // Adjusted fast movement threshold for touch
-             let isFast = sqrt(dx * dx + dy * dy) > 8;
+             let isFast = sqrt(dx * dx + dy * dy) > 7; // Moderate fast threshold for touch
              processInteraction(currentX, currentY, isFast);
-             e.preventDefault();
-        }
-         function handleTouchEnd(e) { /* ... same ... */ if (isDragging) { isDragging = false; } }
+             e.preventDefault(); // Crucial to prevent scrolling during drag
+         }
+
+         function handleTouchEnd(e) {
+             // Important: Check touches.length BEFORE setting isDragging = false
+             if (isDragging && e.touches.length === 0) { // Only trigger momentum if all fingers are lifted
+                 isDragging = false;
+                 // Apply momentum based on the last movement before release
+                 momX = lastDy * DRAG_MOMENTUM_FACTOR;
+                 momY = lastDx * DRAG_MOMENTUM_FACTOR;
+                 logDebug(`Touch End - Momentum set: (${momX.toFixed(4)}, ${momY.toFixed(4)})`);
+             } else if (e.touches.length > 0) {
+                 // If other fingers are still down, update prevMouse to the remaining finger
+                 // This helps prevent jumps if one finger lifts during a multi-touch
+                 // (Though this demo primarily uses single touch)
+                 prevMouseX = e.touches[0].clientX;
+                 prevMouseY = e.touches[0].clientY;
+             }
+         }
+
          function handleWheel(e) {
              e.preventDefault();
              let now = millis();
-             // Reduced timeout allows quicker re-interaction via wheel
-             if (now - lastInteractionTime > 20) {
+             if (now - lastInteractionTime > 25) { // Slightly shorter timeout
                  let delta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
-                 // Increased sensitivity for wheel rotation/momentum
-                 let rotationAmount = delta * 0.01;
-                 let momentumAmount = delta * 0.004;
-                  // Apply momentum more strongly
-                 if (abs(e.deltaY) > abs(e.deltaX)) { rotY += rotationAmount; momX = momentumAmount; momY *= 0.3; } // Changed axis mapping and momentum reduction
-                 else { rotX -= rotationAmount; momY = -momentumAmount; momX *= 0.3; } // Changed axis mapping and momentum reduction
+                 let rotationAmount = delta * 0.008; // Moderate sensitivity
+                 let momentumAmount = delta * 0.0035; // Moderate momentum
 
-                 let scrollIntensity = constrain(abs(delta) / 40, 0.1, 1.3); // Higher max intensity
-                 let chargeToAdd = map(scrollIntensity, 0.1, 1.3, 3, 15); // More charge from scroll
+                 // Apply rotation and momentum directly (wheel is impulsive)
+                 if (abs(e.deltaY) > abs(e.deltaX)) { // Vertical scroll
+                     rotY += rotationAmount;
+                     momX = momentumAmount; // Vertical scroll adds X momentum
+                     momY *= 0.4; // Dampen other axis momentum
+                 } else { // Horizontal scroll
+                     rotX -= rotationAmount; // Horizontal scroll affects X rotation
+                     momY = -momentumAmount; // Horizontal scroll adds Y momentum
+                     momX *= 0.4; // Dampen other axis momentum
+                 }
+
+                 let scrollIntensity = constrain(abs(delta) / 45, 0.1, 1.1);
+                 let chargeToAdd = map(scrollIntensity, 0.1, 1.1, 2, 12);
                  chargeLevel = min(MAX_CHARGE, chargeLevel + chargeToAdd);
 
                  updateIntensityHistory(scrollIntensity);
-                 playClickSound(scrollIntensity * 1.1); // Louder scroll clicks
+                 playClickSound(scrollIntensity);
 
-                 // More static discharges from scroll
-                 let numStatic = floor(map(scrollIntensity, 0.1, 1.3, 1, 6));
+                 let numStatic = floor(map(scrollIntensity, 0.1, 1.1, 1, 5));
                  for (let i = 0; i < numStatic; i++) {
-                     if (random() < 0.7) { setTimeout(() => createStaticDischarge(), random(i * 25)); }
+                     if (random() < 0.65) { setTimeout(() => createStaticDischarge(), random(i * 28)); }
                  }
 
-                 // Higher chance of major discharge from intense scroll
-                 if (scrollIntensity > 0.8 && chargeLevel > 60 && now - lastBigDischargeTime > BIG_DISCHARGE_MIN_INTERVAL / 1.5 && random() < 0.20) {
+                 if (scrollIntensity > 0.75 && chargeLevel > 65 && now - lastBigDischargeTime > BIG_DISCHARGE_MIN_INTERVAL / 1.2 && random() < 0.18) {
                     setTimeout(() => {
                         createMajorDischarge(); playMajorDischargeSound();
                         lastBigDischargeTime = now; chargeLevel *= 0.4; intensityHistory = [];
-                     }, random(30, 100)); // Faster discharge trigger
+                     }, random(40, 120));
                  }
                  lastInteractionTime = now;
              }
@@ -752,18 +912,16 @@
         // --- Window Resize and Back Button ---
          function windowResized() {
              resizeCanvas(windowWidth, windowHeight);
-             // Recalculate sphere radius and regenerate stars on resize
              wireframeSphere = createWireframeSphere(Math.min(windowWidth, windowHeight) * 0.3, SPHERE_DETAIL);
              generateStars();
+             logDebug("Window Resized");
          }
         function goBack() {
-            // Attempt to go back in history first, then redirect
+            logDebug("Back Button Clicked");
             if (window.history.length > 1) {
                 window.history.back();
             } else {
-                // Fallback if no history (e.g., opened in new tab)
-                // Assumes index.html is in the same directory or parent. Adjust if needed.
-                try { window.location.href = './index.html'; } catch (e) { console.log("Couldn't redirect");}
+                try { window.location.href = './index.html'; } catch (e) { logDebug("Redirect failed");}
             }
         }
 
