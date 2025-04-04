@@ -102,6 +102,12 @@
             if (isMobile && window.DeviceMotionEvent) {
                 window.addEventListener('devicemotion', handleDeviceMotion);
             }
+
+            // Ensure the ball starts moving on its own on mobile
+            if (isMobile) {
+                momX = random(-0.01, 0.01);
+                momY = random(-0.01, 0.01);
+            }
         }
 
         // --- Sphere Geometry Creation --- (Unchanged)
@@ -166,7 +172,7 @@
             pop();
         }
 
-        // --- Momentum Handling --- (Updated for accelerometer-based grounding)
+        // --- Momentum Handling --- (Updated for mobile self-movement)
         function handleMomentum() {
             if (!isDragging) {
                 // Apply accelerometer-based grounding
@@ -184,6 +190,13 @@
                 // Apply friction
                 momX *= MOMENTUM_FRICTION;
                 momY *= MOMENTUM_FRICTION;
+
+                // Trigger sound and haptics based on movement
+                let movement = sqrt(momX * momX + momY * momY);
+                if (movement > 0.01) {
+                    playClickSound(movement);
+                    triggerHaptic('click');
+                }
 
                 // --- Effect triggering based on momentum ---
                 let movement = sqrt(momX * momX + momY * momY);
@@ -215,6 +228,11 @@
             if (event.accelerationIncludingGravity) {
                 accelX = event.accelerationIncludingGravity.x / 10; // Normalize values
                 accelY = event.accelerationIncludingGravity.y / 10; // Normalize values
+
+                // Trigger haptics on significant motion
+                if (Math.abs(accelX) > 0.5 || Math.abs(accelY) > 0.5) {
+                    triggerHaptic('click');
+                }
             }
         }
 
@@ -403,15 +421,14 @@
                 try {
                     audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     await audioContext.resume();
-                    // Only need master gain now
                     masterGain = audioContext.createGain();
-                    masterGain.gain.value = 0.6; // Slightly lower default volume might be good
-                    masterGain.connect(audioContext.destination); // Connect directly to output
-                 } catch (e) {
+                    masterGain.gain.value = 0.6; // Slightly lower default volume
+                    masterGain.connect(audioContext.destination);
+                } catch (e) {
                     console.error("Web Audio API could not start.", e);
                     audioContext = null;
                 }
-             }
+            }
         }
 
         // Removed updateAmbientHum()
