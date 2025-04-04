@@ -8,6 +8,13 @@ body {
   align-items: center; /* Center all child elements horizontally */
   justify-content: center;
   min-height: 100vh; /* Ensure full height for centering */
+  max-width: 90%; /* Limit width for better mobile layout */
+  box-sizing: border-box; /* Include padding in width calculations */
+}
+
+body.dark {
+  background: #000; /* Ensure dark theme background */
+  color: #fff; /* Ensure dark theme text color */
 }
 
 a {
