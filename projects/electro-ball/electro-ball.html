@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no">
+    <title>Enhanced Wireframe Ball with Gravity & Haptics</title>
+    <style>
+        /* Basic styling for body and canvas */
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent scrollbars */
+            background-color: #000; /* Black background */
+            touch-action: none; /* Disable default touch behaviors like pinch-zoom */
+        }
+        canvas {
+            display: block; /* Remove potential spacing below the canvas */
+        }
+
+        /* Update styling for the back arrow */
+        #backButton {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 1000;
+            background: none; /* Remove background */
+            border: none; /* Remove border */
+            padding: 0; /* Remove padding */
+        }
+        #backButton:hover {
+            opacity: 0.8;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+</head>
+<body>
+    <button id="backButton" onclick="goBack()" aria-label="Go Back">&#x2190;</button>
+    <script>
+        // --- Configuration Parameters ---
+        const SPHERE_RADIUS = 150;
+        const SPHERE_DETAIL = 24;
+        const MOMENTUM_FRICTION = 0.975;
+        const GRAVITY_PULL = 0.00005; // Strength of the downward pull simulation
+        const NOTCH_DISTANCE_DRAG = 12;
+        const NOTCH_DISTANCE_MOMENTUM = 15;
+        const CHARGE_DECAY = 0.985;
+        const MAX_CHARGE = 100;
+        const BIG_DISCHARGE_MIN_INTERVAL = 2500;
+        const HEARTBEAT_RATE = 0.7;
+        const GLOW_COLOR = 'rgba(150, 180, 255, 0.5)';
+        const MAX_GLOW_BLUR = 25;
+        // Haptic Feedback Durations (ms)
+        const HAPTIC_CLICK = 10;
+        const HAPTIC_MAJOR_DISCHARGE = 75;
+
+        // --- State Variables ---
+        let rotX = 0;
+        let rotY = 0;
+        let prevMouseX, prevMouseY;
+        let isDragging = false;
+        let momX = 0, momY = 0;
+        let wireframeSphere;
+        let lastInteractionTime = 0;
+        let distanceSinceLastNotch = 0;
+        let chargeLevel = 0;
+        let discharges = [];
+        let intensityHistory = [];
+        const INTENSITY_HISTORY_MAX = 20;
+        let lastBigDischargeTime = 0;
+        let heartbeatPulse = 0;
+        let accelX = 0, accelY = 0; // Accelerometer values
+        let isMobile = /Mobi|Android/i.test(navigator.userAgent); // Detect mobile devices
+
+        // --- Audio Variables ---
+        let audioContext;
+        let masterGain; // Keep master gain for overall volume control
+
+        // --- Setup ---
+        function setup() {
+            createCanvas(windowWidth, windowHeight, WEBGL);
+            noFill();
+            strokeWeight(1.2);
+            wireframeSphere = createWireframeSphere(SPHERE_RADIUS, SPHERE_DETAIL);
+
+            let canvas = document.querySelector('canvas');
+            canvas.addEventListener('mousedown', handleMouseDown);
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            document.addEventListener('touchmove', handleTouchMove, { passive: false });
+            document.addEventListener('touchend', handleTouchEnd);
+            canvas.addEventListener('wheel', handleWheel, { passive: false });
+
+            // Initialize simplified audio on first interaction
+            document.addEventListener('mousedown', initAudio, { once: true });
+            document.addEventListener('touchstart', initAudio, { once: true });
+
+            // Add accelerometer event listener for mobile devices
+            if (isMobile && window.DeviceMotionEvent) {
+                window.addEventListener('devicemotion', handleDeviceMotion);
+            }
+        }
+
+        // --- Sphere Geometry Creation --- (Unchanged)
+        function createWireframeSphere(r, detail) {
+            let sphere = [];
+            for (let i = 0; i < detail; i++) {
+                let lon = map(i, 0, detail, 0, TWO_PI);
+                let lonPoints = [];
+                for (let j = 0; j <= detail; j++) {
+                    let lat = map(j, 0, detail, 0, PI);
+                    let x = r * sin(lat) * cos(lon);
+                    let y = r * sin(lat) * sin(lon);
+                    let z = r * cos(lat);
+                    lonPoints.push(createVector(x, y, z));
+                }
+                sphere.push({ type: 'longitude', points: lonPoints });
+            }
+            for (let j = 1; j < detail; j++) {
+                let lat = map(j, 0, detail, 0, PI);
+                let latPoints = [];
+                for (let i = 0; i <= detail; i++) {
+                    let lon = map(i, 0, detail, 0, TWO_PI);
+                    let x = r * sin(lat) * cos(lon);
+                    let y = r * sin(lat) * sin(lon);
+                    let z = r * cos(lat);
+                    latPoints.push(createVector(x, y, z));
+                }
+                sphere.push({ type: 'latitude', points: latPoints });
+            }
+            return sphere;
+        }
+
+        // --- Main Draw Loop --- (Updated rotation logic)
+        function draw() {
+            background(0);
+            heartbeatPulse = (sin(frameCount * 0.02 * HEARTBEAT_RATE) + 1) * 0.5;
+            ambientLight(40);
+            pointLight(255, 255, 255, 200, -150, 250);
+
+            handleMomentum(); // Includes gravity simulation now
+
+            chargeLevel = max(0, chargeLevel * CHARGE_DECAY);
+
+            if (chargeLevel > 5 && random() < 0.01 * (chargeLevel / MAX_CHARGE)) {
+                if (random() < 0.3) createStaticDischarge(0.5 + random(0.5));
+            }
+            checkForMajorDischarge();
+
+            push();
+            rotateX(rotY); // Rotate vertically based on rotX
+            rotateY(rotX); // Rotate horizontally based on rotY
+
+            let chargeRatio = chargeLevel / MAX_CHARGE;
+            let glowIntensity = chargeRatio * MAX_GLOW_BLUR;
+            drawingContext.shadowBlur = glowIntensity;
+            drawingContext.shadowColor = GLOW_COLOR;
+
+            drawWireframeSphere(chargeRatio);
+            updateAndDrawDischarges();
+
+            drawingContext.shadowBlur = 0;
+            pop();
+        }
+
+        // --- Momentum Handling --- (Updated for accelerometer-based grounding)
+        function handleMomentum() {
+            if (!isDragging) {
+                // Apply accelerometer-based grounding
+                if (isMobile) {
+                    momX += accelY * GRAVITY_PULL * 50; // Invert Y-axis for natural tilt
+                    momY += accelX * GRAVITY_PULL * 50; // X-axis tilt
+                } else {
+                    momY += GRAVITY_PULL; // Default gravity pull for non-mobile
+                }
+
+                // Apply momentum to rotation angles
+                rotX += momX;
+                rotY += momY;
+
+                // Apply friction
+                momX *= MOMENTUM_FRICTION;
+                momY *= MOMENTUM_FRICTION;
+
+                // --- Effect triggering based on momentum ---
+                let movement = sqrt(momX * momX + momY * momY);
+                distanceSinceLastNotch += movement * 150;
+
+                let chargeAddMomentum = constrain(movement * 8, 0, 1.5);
+                chargeLevel = min(MAX_CHARGE, chargeLevel + chargeAddMomentum);
+
+                if (distanceSinceLastNotch > NOTCH_DISTANCE_MOMENTUM) {
+                    let intensity = constrain(movement * 150, 0.05, 0.6);
+                    playClickSound(intensity); // This now also triggers haptics
+                    updateIntensityHistory(intensity);
+
+                    let staticProb = map(chargeLevel, 0, MAX_CHARGE, 0.1, 0.4) * map(intensity, 0.05, 0.6, 0.5, 1.2);
+                    if (random() < staticProb) {
+                        createStaticDischarge();
+                    }
+                    distanceSinceLastNotch = 0;
+                }
+            } else if (!isDragging) {
+                if (intensityHistory.length > 0 && frameCount % 10 === 0) {
+                    intensityHistory.shift();
+                }
+            }
+        }
+
+        // --- Device Motion Handling ---
+        function handleDeviceMotion(event) {
+            if (event.accelerationIncludingGravity) {
+                accelX = event.accelerationIncludingGravity.x / 10; // Normalize values
+                accelY = event.accelerationIncludingGravity.y / 10; // Normalize values
+            }
+        }
+
+        // --- Drawing Functions --- (Unchanged)
+        function drawWireframeSphere(chargeRatio) {
+            let baseGray = 150 + heartbeatPulse * 15;
+            let chargeColorBoost = chargeRatio * 100;
+            for (let line of wireframeSphere) {
+                beginShape();
+                for (let v of line.points) {
+                    let r = baseGray + chargeColorBoost * 0.6;
+                    let g = baseGray + chargeColorBoost * 0.8;
+                    let b = baseGray + chargeColorBoost * 1.2;
+                    stroke(constrain(r, 0, 255), constrain(g, 0, 255), constrain(b, 0, 255), 220);
+                    vertex(v.x, v.y, v.z);
+                }
+                if (line.type === 'latitude') {
+                     let first = line.points[0];
+                     vertex(first.x, first.y, first.z);
+                }
+                endShape();
+            }
+        }
+        function updateAndDrawDischarges() {
+            for (let i = discharges.length - 1; i >= 0; i--) {
+                let d = discharges[i];
+                d.life--;
+                if (d.life <= 0) {
+                    discharges.splice(i, 1);
+                    continue;
+                }
+                if (d.type === 'static') {
+                    drawStaticDischarge(d);
+                } else if (d.type === 'major') {
+                    drawMajorDischarge(d);
+                }
+            }
+        }
+        function drawStaticDischarge(d) {
+            let lifeRatio = d.life / d.maxLife;
+            let flicker = 0.8 + 0.2 * noise(frameCount * 0.3 + d.variation * 10);
+            let alpha = map(sqrt(lifeRatio), 0, 1, 0, 190) * flicker;
+            strokeWeight(d.weight);
+            stroke(180 + 75 * flicker, 200 + 55 * flicker, 255, alpha);
+            for (let seg of d.segments) {
+                line(seg.p1.x, seg.p1.y, seg.p1.z, seg.p2.x, seg.p2.y, seg.p2.z);
+            }
+        }
+        function drawMajorDischarge(d) {
+            let lifeRatio = d.life / d.maxLife;
+            let coreAlpha, glowAlpha;
+            if (lifeRatio > 0.6) {
+                let flashRatio = map(lifeRatio, 1.0, 0.6, 0, 1);
+                coreAlpha = 255;
+                glowAlpha = 150 + 100 * flashRatio;
+            } else {
+                coreAlpha = map(lifeRatio, 0, 0.6, 0, 255);
+                glowAlpha = map(lifeRatio, 0, 0.6, 0, 150);
+            }
+            let time = frameCount * 0.1 + d.variation * 50;
+            let flicker = 0.6 + 0.4 * noise(time * 3) * noise(time * 0.8 + 100);
+            coreAlpha *= flicker;
+            glowAlpha *= flicker;
+            let coreR = 220 + 35 * flicker;
+            let coreG = 230 + 25 * flicker;
+            let coreB = 255;
+            drawLightningBranch(d.mainBranch, coreR, coreG, coreB, coreAlpha, glowAlpha);
+            for (let branch of d.secondaryBranches) {
+                drawLightningBranch(branch, coreR, coreG, coreB, coreAlpha * 0.8, glowAlpha * 0.7);
+            }
+        }
+        function drawLightningBranch(branch, r, g, b, coreAlpha, glowAlpha) {
+             for (let seg of branch.segments) {
+                strokeWeight(seg.width * 2.5);
+                stroke(r, g, b, glowAlpha * 0.6);
+                line(seg.p1.x, seg.p1.y, seg.p1.z, seg.p2.x, seg.p2.y, seg.p2.z);
+                strokeWeight(seg.width);
+                stroke(r, g, b, coreAlpha);
+                line(seg.p1.x, seg.p1.y, seg.p1.z, seg.p2.x, seg.p2.y, seg.p2.z);
+            }
+         }
+
+        // --- Intensity Tracking --- (Unchanged)
+        function updateIntensityHistory(intensity) {
+            intensityHistory.push(intensity);
+            if (intensityHistory.length > INTENSITY_HISTORY_MAX) {
+                intensityHistory.shift();
+            }
+        }
+        function getAverageIntensity() {
+            if (intensityHistory.length < 5) return 0;
+            let sum = intensityHistory.reduce((a, b) => a + b, 0);
+            return sum / intensityHistory.length;
+        }
+
+        // --- Discharge Creation Logic --- (Unchanged except calls to simplified sounds)
+        function checkForMajorDischarge() {
+            let now = millis();
+            let avgIntensity = getAverageIntensity();
+            if (chargeLevel > 75 &&
+                now - lastBigDischargeTime > BIG_DISCHARGE_MIN_INTERVAL &&
+                avgIntensity > 0.55 &&
+                random() < 0.05) {
+                 createMajorDischarge();
+                 playMajorDischargeSound(); // This now also triggers haptics
+                 lastBigDischargeTime = now;
+                 chargeLevel *= 0.5;
+                 intensityHistory = [];
+            }
+        }
+        function createStaticDischarge(sizeMultiplier = 1) {
+             let phi = random(TWO_PI);
+             let theta = acos(random(-1, 1));
+             let start = p5.Vector.fromAngles(theta, phi, SPHERE_RADIUS);
+             let dirOut = start.copy().normalize();
+             let length = random(8, 20) * map(chargeLevel, 0, MAX_CHARGE, 0.7, 1.3) * sizeMultiplier;
+             let numSegments = floor(random(2, 5));
+             let segments = [];
+             let currentPoint = start.copy();
+             let overallDir = p5.Vector.add(dirOut, p5.Vector.random3D().mult(0.5)).normalize();
+            for (let i = 0; i < numSegments; i++) {
+                 let segmentLength = length / numSegments * random(0.8, 1.2);
+                 let deviation = p5.Vector.random3D().mult(segmentLength * 0.4 * sin(map(i, 0, numSegments, 0, PI)));
+                 let nextPoint = p5.Vector.add(currentPoint, p5.Vector.add(overallDir.copy().mult(segmentLength), deviation));
+                 segments.push({ p1: currentPoint.copy(), p2: nextPoint.copy() });
+                 currentPoint = nextPoint;
+             }
+             let lifetime = 8 + random(8);
+             discharges.push({
+                 type: 'static', segments: segments, life: lifetime, maxLife: lifetime,
+                 variation: random(1000), weight: random(0.8, 1.3)
+            });
+        }
+        function createMajorDischarge() {
+             let phi = random(TWO_PI);
+             let theta = acos(random(-1, 1));
+             let start = p5.Vector.fromAngles(theta, phi, SPHERE_RADIUS);
+             let dirOut = start.copy().normalize();
+             let mainLength = random(50, 100) * map(chargeLevel, 50, MAX_CHARGE, 0.8, 1.5);
+             let mainIntensity = 1.0;
+             let mainBranch = createLightningBranch(start, dirOut, mainLength, mainIntensity);
+             let secondaryBranches = [];
+             let numSecondary = floor(random(2, 5));
+             for (let i = 0; i < numSecondary; i++) {
+                 let forkIndex = floor(pow(random(), 1.5) * (mainBranch.segments.length - 2)) + 1;
+                 let forkSegment = mainBranch.segments[forkIndex];
+                 let forkPoint = p5.Vector.lerp(forkSegment.p1, forkSegment.p2, random(0.2, 0.8));
+                 let mainSegDir = p5.Vector.sub(forkSegment.p2, forkSegment.p1).normalize();
+                 let forkDir = p5.Vector.random3D().cross(mainSegDir).normalize();
+                 forkDir.lerp(dirOut, 0.4);
+                 forkDir.rotate(random(-0.5, 0.5));
+                 let branchLength = mainLength * random(0.2, 0.5) * (1 - forkIndex / mainBranch.segments.length);
+                 let branchIntensity = mainIntensity * random(0.5, 0.8);
+                 secondaryBranches.push(createLightningBranch(forkPoint, forkDir, branchLength, branchIntensity));
+             }
+             let lifetime = 20 + random(15);
+             discharges.push({
+                 type: 'major', mainBranch: mainBranch, secondaryBranches: secondaryBranches,
+                 life: lifetime, maxLife: lifetime, variation: random(1000)
+             });
+         }
+        function createLightningBranch(start, direction, length, intensity) {
+            let segments = [];
+            let numSegments = max(3, floor(length / 8) + floor(random(0, 4)));
+            let currentPoint = start.copy();
+            let targetEnd = p5.Vector.add(start, direction.copy().setMag(length));
+            let baseWidth = 1.5 + intensity * 1.5;
+            for (let i = 1; i <= numSegments; i++) {
+                 let t = i / numSegments;
+                 let targetPoint = p5.Vector.lerp(start, targetEnd, t);
+                 let deviationScale = length * 0.08 * sin(t * PI) * random(0.7, 1.3);
+                 let deviation = p5.Vector.random3D().setMag(deviationScale);
+                 targetPoint.add(deviation);
+                 let width = baseWidth * (1 - pow(t, 1.5)) + 0.3;
+                 segments.push({ p1: currentPoint.copy(), p2: targetPoint.copy(), width: width });
+                 currentPoint = targetPoint;
+            }
+             return { segments: segments, intensity: intensity };
+        }
+
+        // --- Simplified Audio Initialization and Playback ---
+
+        // Initializes only the necessary audio components
+        async function initAudio() {
+            if (!audioContext) {
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    await audioContext.resume();
+                    // Only need master gain now
+                    masterGain = audioContext.createGain();
+                    masterGain.gain.value = 0.6; // Slightly lower default volume might be good
+                    masterGain.connect(audioContext.destination); // Connect directly to output
+                 } catch (e) {
+                    console.error("Web Audio API could not start.", e);
+                    audioContext = null;
+                }
+             }
+        }
+
+        // Removed updateAmbientHum()
+
+        // Plays a simpler, instant click sound
+        function playClickSound(intensity = 0.5) {
+            triggerHaptic('click'); // Trigger haptic feedback
+            if (!audioContext || !masterGain) return;
+
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            const now = audioContext.currentTime;
+
+            let chargeFactor = chargeLevel / MAX_CHARGE;
+            let baseFreq = 700 + chargeFactor * 300; // Slightly higher base freq
+            let freq = baseFreq + random(-50, 50);
+            osc.frequency.setValueAtTime(freq, now);
+            osc.type = 'triangle'; // Use a simpler waveform (triangle or square)
+
+            // Very short envelope for an instant click
+            let peakVol = 0.08 * intensity * (1 + chargeFactor * 0.5); // Lower volume
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(peakVol, now + 0.001); // Extremely fast attack
+            gain.gain.linearRampToValueAtTime(0, now + 0.02); // Fast linear decay
+
+            osc.connect(gain);
+            gain.connect(masterGain); // Connect directly to master gain
+            osc.start(now);
+            osc.stop(now + 0.02); // Stop very quickly
+        }
+
+        // Plays a simpler, instant major discharge sound
+        function playMajorDischargeSound() {
+            triggerHaptic('major'); // Trigger haptic feedback
+            if (!audioContext || !masterGain) return;
+            const now = audioContext.currentTime;
+
+            // Simple approach: Low frequency burst
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.type = 'square'; // Square wave for a harsher sound
+            osc.frequency.setValueAtTime(80 + random(-10, 10), now); // Low frequency
+
+            // Short, sharp envelope
+            let peakVol = 0.25; // Louder than click
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(peakVol, now + 0.005); // Fast attack
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15); // Slightly longer decay than click
+
+            osc.connect(gain);
+            gain.connect(masterGain);
+            osc.start(now);
+            osc.stop(now + 0.15);
+
+            // Optional: Add a quick noise burst for crackle
+            const noiseSource = audioContext.createBufferSource();
+            const noiseGain = audioContext.createGain();
+            const bufferSize = audioContext.sampleRate * 0.05; // Short noise duration
+            const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+            const output = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) { output[i] = Math.random() * 2 - 1; }
+            noiseSource.buffer = noiseBuffer;
+
+            noiseGain.gain.setValueAtTime(0, now);
+            noiseGain.gain.linearRampToValueAtTime(0.1, now + 0.002); // Quick noise attack
+            noiseGain.gain.linearRampToValueAtTime(0, now + 0.05);   // Quick noise decay
+
+            noiseSource.connect(noiseGain);
+            noiseGain.connect(masterGain);
+            noiseSource.start(now);
+            noiseSource.stop(now + 0.05);
+        }
+
+        // --- Haptic Feedback ---
+        function triggerHaptic(type) {
+            // Check if vibration API is supported
+            if ('vibrate' in navigator) {
+                try {
+                    if (type === 'click') {
+                        navigator.vibrate(HAPTIC_CLICK);
+                    } else if (type === 'major') {
+                        navigator.vibrate(HAPTIC_MAJOR_DISCHARGE);
+                        // Alternatively, use a pattern: navigator.vibrate([50, 30, 50]);
+                    }
+                } catch (e) {
+                    console.warn("Haptic feedback failed:", e);
+                }
+            }
+        }
+
+        // --- Interaction Logic --- (Updated for vertical rotation)
+        function processInteraction(currX, currY, isFastMovement) {
+            let dx = currX - prevMouseX;
+            let dy = currY - prevMouseY;
+            rotX += dy * 0.01; // Vertical rotation
+            rotY += dx * 0.01; // Horizontal rotation
+            momX = dy * 0.008; // Adjust momentum for vertical rotation
+            momY = dx * 0.008; // Adjust momentum for horizontal rotation
+            let distance = sqrt(dx * dx + dy * dy);
+            distanceSinceLastNotch += distance;
+            let chargeAddFactor = isFastMovement ? 0.4 : 0.2;
+            chargeLevel = min(MAX_CHARGE, chargeLevel + distance * chargeAddFactor);
+
+            if (distanceSinceLastNotch > NOTCH_DISTANCE_DRAG) {
+                let intensity = constrain(distance / 15, 0.1, 1.0);
+                playClickSound(intensity); // Includes haptics now
+                updateIntensityHistory(intensity);
+                let staticProb = map(intensity, 0.1, 1.0, 0.2, 0.8) * (chargeLevel / MAX_CHARGE);
+                if (random() < staticProb) {
+                    let numStatic = isFastMovement ? floor(random(1, 4)) : 1;
+                    for (let i = 0; i < numStatic; i++) {
+                        setTimeout(() => createStaticDischarge(), random(i * 20));
+                    }
+                }
+                let now = millis();
+                if (isFastMovement && chargeLevel > 70 && now - lastBigDischargeTime > BIG_DISCHARGE_MIN_INTERVAL / 2 && random() < 0.08) {
+                    createMajorDischarge();
+                    playMajorDischargeSound(); // Includes haptics now
+                    lastBigDischargeTime = now;
+                    chargeLevel *= 0.6;
+                    intensityHistory = [];
+                }
+                distanceSinceLastNotch = 0;
+            }
+            prevMouseX = currX;
+            prevMouseY = currY;
+            lastInteractionTime = millis();
+        }
+
+        // --- Event Handlers --- (Unchanged)
+        function handleMouseDown(e) {
+             isDragging = true; prevMouseX = e.clientX; prevMouseY = e.clientY;
+             momX = 0; momY = 0; distanceSinceLastNotch = 0; intensityHistory = [];
+             e.preventDefault();
+         }
+         function handleMouseMove(e) {
+             if (!isDragging) return;
+             let isFast = abs(e.movementX) + abs(e.movementY) > 15;
+             processInteraction(e.clientX, e.clientY, isFast);
+         }
+         function handleMouseUp() { if (isDragging) { isDragging = false; } }
+         function handleTouchStart(e) {
+             if (e.touches.length === 1) {
+                 isDragging = true; prevMouseX = e.touches[0].clientX; prevMouseY = e.touches[0].clientY;
+                 momX = 0; momY = 0; distanceSinceLastNotch = 0; intensityHistory = [];
+                 e.preventDefault();
+             }
+         }
+         function handleTouchMove(e) {
+             if (!isDragging || e.touches.length !== 1) return;
+             let currentX = e.touches[0].clientX; let currentY = e.touches[0].clientY;
+             let distance = dist(currentX, currentY, prevMouseX, prevMouseY);
+             let isFast = distance > 10;
+             processInteraction(currentX, currentY, isFast);
+             e.preventDefault();
+         }
+         function handleTouchEnd(e) { if (isDragging) { isDragging = false; } }
+         function handleWheel(e) {
+             e.preventDefault();
+             let now = millis();
+             if (now - lastInteractionTime > 30) {
+                 let delta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
+                 let rotationAmount = delta * 0.008;
+                 let momentumAmount = delta * 0.003;
+                 if (abs(e.deltaY) > abs(e.deltaX)) { rotX += rotationAmount; momY = momentumAmount; momX *= 0.5; }
+                 else { rotY += rotationAmount; momX = momentumAmount; momY *= 0.5; }
+                 let scrollIntensity = constrain(abs(delta) / 50, 0.1, 1.0);
+                 let chargeToAdd = map(scrollIntensity, 0.1, 1.0, 2, 10);
+                 chargeLevel = min(MAX_CHARGE, chargeLevel + chargeToAdd);
+                 updateIntensityHistory(scrollIntensity);
+                 playClickSound(scrollIntensity); // Includes haptics now
+                 let numStatic = floor(map(scrollIntensity, 0.1, 1.0, 1, 4));
+                 for (let i = 0; i < numStatic; i++) {
+                     if (random() < 0.6) { setTimeout(() => createStaticDischarge(), random(i * 30)); }
+                 }
+                 if (scrollIntensity > 0.7 && chargeLevel > 70 && now - lastBigDischargeTime > BIG_DISCHARGE_MIN_INTERVAL && random() < 0.15) {
+                    setTimeout(() => {
+                        createMajorDischarge(); playMajorDischargeSound(); // Includes haptics now
+                        lastBigDischargeTime = now; chargeLevel *= 0.5; intensityHistory = [];
+                     }, random(50, 150));
+                 }
+                 lastInteractionTime = now;
+             }
+         }
+         function windowResized() { resizeCanvas(windowWidth, windowHeight); }
+
+        // Function to navigate back to the previous page
+        function goBack() {
+            window.location.href = './index.html';
+        }
+
+    </script>
+</body>
+</html>
