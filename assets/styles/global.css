@@ -3,6 +3,11 @@ body {
   padding: 2em;
   background: #ededed;
   color: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center all child elements horizontally */
+  justify-content: center;
+  min-height: 100vh; /* Ensure full height for centering */
 }
 
 a {
@@ -21,12 +26,14 @@ h1 {
   font-weight: bold;
   border-bottom: 2px solid #000000;
   padding-bottom: 0.5em;
+  text-align: unset; /* Remove text alignment to rely on flexbox centering */
 }
 
 ul {
   list-style: none;
   padding: 0;
   margin: 0;
+  text-align: unset; /* Remove text alignment to rely on flexbox centering */
 }
 
 li {
