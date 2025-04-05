@@ -2,9 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Chaos Pendulum</title>
   <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden; /* Prevent scrolling */
+    }
+    canvas {
+      display: block; /* Ensure canvas scales properly */
+    }
+  </style>
 </head>
 <body>
   <script>
@@ -24,11 +35,16 @@
   let g = 1; // gravity
 
   function setup() {
-    createCanvas(600, 600);
+    createCanvas(windowWidth, windowHeight); // Make canvas responsive
     pixelDensity(1);
     a1 = PI / 2;
     a2 = PI / 2;
     background(255);
+  }
+
+  function windowResized() {
+    resizeCanvas(windowWidth, windowHeight); // Adjust canvas size on window resize
+    background(255); // Reset background after resizing
   }
 
   function draw() {
