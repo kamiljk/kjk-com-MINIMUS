@@ -11,19 +11,10 @@
       touch-action: none;
     }
 
-    #ball {
-      width: 200px;
-      height: 200px;
-      border: 2px solid lime;
-      border-radius: 50%;
-      margin: 100px auto;
-      position: relative;
-      animation: slow-rotate 10s linear infinite;
-    }
-
-    @keyframes slow-rotate {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
     }
 
     #hapticSwitch {
@@ -37,31 +28,89 @@
 <body>
 
   <input id="hapticSwitch" type="checkbox" />
-  <div id="ball"></div>
+  <canvas id="canvas"></canvas>
 
   <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
     const hapticSwitch = document.getElementById('hapticSwitch');
-    const ball = document.getElementById('ball');
+
+    let width, height;
+    let rotation = 0;
     let hapticInterval = null;
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function drawSphere(ctx, radius, segments, rings, rotY) {
+      ctx.save();
+      ctx.translate(width / 2, height / 2);
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 1;
+
+      for (let i = 0; i <= rings; i++) {
+        const theta = i * Math.PI / rings;
+        const y = radius * Math.cos(theta);
+        const r = radius * Math.sin(theta);
+        ctx.beginPath();
+        for (let j = 0; j <= segments; j++) {
+          const phi = j * 2 * Math.PI / segments + rotY;
+          const x = r * Math.cos(phi);
+          const z = r * Math.sin(phi);
+          const scale = 1 / (1 + z / radius); // simple perspective
+          ctx.lineTo(x * scale, y * scale);
+        }
+        ctx.stroke();
+      }
+
+      for (let j = 0; j < segments; j++) {
+        const phi = j * 2 * Math.PI / segments + rotY;
+        ctx.beginPath();
+        for (let i = 0; i <= rings; i++) {
+          const theta = i * Math.PI / rings;
+          const y = radius * Math.cos(theta);
+          const r = radius * Math.sin(theta);
+          const x = r * Math.cos(phi);
+          const z = r * Math.sin(phi);
+          const scale = 1 / (1 + z / radius);
+          ctx.lineTo(x * scale, y * scale);
+        }
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, width, height);
+      drawSphere(ctx, 120, 24, 16, rotation);
+      rotation += 0.01;
+      requestAnimationFrame(animate);
+    }
+
+    animate();
 
     function startFakeHaptics() {
       if (hapticInterval) return;
       hapticInterval = setInterval(() => {
         hapticSwitch.checked = !hapticSwitch.checked;
-      }, 75); // subtle tick ~13Hz
+      }, 75);
     }
 
     function stopFakeHaptics() {
-      if (!hapticInterval) return;
       clearInterval(hapticInterval);
       hapticInterval = null;
       hapticSwitch.checked = false;
     }
 
-    ball.addEventListener('pointerdown', startFakeHaptics);
-    ball.addEventListener('pointerup', stopFakeHaptics);
-    ball.addEventListener('pointercancel', stopFakeHaptics);
-    ball.addEventListener('pointerleave', stopFakeHaptics);
+    canvas.addEventListener('pointerdown', startFakeHaptics);
+    canvas.addEventListener('pointerup', stopFakeHaptics);
+    canvas.addEventListener('pointercancel', stopFakeHaptics);
+    canvas.addEventListener('pointerleave', stopFakeHaptics);
   </script>
 
 </body>
