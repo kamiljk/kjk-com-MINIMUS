@@ -32,9 +32,16 @@
   }
 
   function draw() {
+    // Clear the canvas completely
+    clear();
+
+    // Apply a semi-transparent rectangle for a fading effect
+    noStroke(); // Ensure no outline for the rectangle
+    fill(255, 255, 255, 50); // White with 50 alpha for transparency
+    rect(0, 0, width, height); // Draw the rectangle to cover the canvas
+
     // Translate origin to center
     translate(width / 2, height / 2);
-    background(255, 255, 255, 20); // trails
 
     // Physics from Lagrange equations
     let num1 = -g * (2 * m1 + m2) * sin(a1);
