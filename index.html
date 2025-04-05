@@ -2,22 +2,77 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Index of .</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Index of kamiljk.com/</title>
+    <link rel="stylesheet" href="./assets/styles/global.css">
     <style>
-      body { font-family: monospace; padding: 2em; background: #fff; color: #000; }
-      a { color: #000; text-decoration: none; }
-      a:hover { text-decoration: underline; }
+      #themeToggle {
+        position: fixed;
+        top: 1em;
+        right: 1em;
+        padding: 0.6em 1.2em;
+        font-size: 2em;
+        font-weight: bold;
+        background: none;
+        color: inherit;
+        border: none; /* Remove border */
+        cursor: pointer;
+        transition: color 0.3s;
+      }
+
+      /* Add styles for light and dark themes */
+      body {
+        background-color: white; /* Default light theme background */
+        color: black; /* Default light theme text color */
+        transition: background-color 0.3s, color 0.3s;
+      }
+
+      body.dark {
+        background-color: black; /* Dark theme background */
+        color: white; /* Dark theme text color */
+      }
     </style>
+    <script>
+      // Auto-detect dark/light mode
+      function applyTheme(theme) {
+        document.body.classList.toggle('dark', theme === 'dark');
+        const toggleButton = document.getElementById('themeToggle');
+        toggleButton.textContent = theme === 'dark' ? '□' : '■';
+      }
+
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+      let currentTheme = prefersDark.matches ? 'dark' : 'light';
+      applyTheme(currentTheme);
+
+      prefersDark.addEventListener('change', (e) => {
+        currentTheme = e.matches ? 'dark' : 'light';
+        applyTheme(currentTheme);
+      });
+
+      function toggleTheme() {
+        currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        applyTheme(currentTheme);
+      }
+
+      // Add touch support for mobile devices
+      document.addEventListener('DOMContentLoaded', () => {
+        const toggleButton = document.getElementById('themeToggle');
+        toggleButton.addEventListener('touchstart', (e) => {
+          e.preventDefault(); // Prevent default touch behavior
+          toggleTheme();
+        });
+      });
+    </script>
   </head>
   <body>
-    <h1>Index of /.</h1>
+    <header>
+      <h1>kamiljk.com</h1>
+      <button id="themeToggle" onclick="toggleTheme()">■</button>
+    </header>
     <ul>
-      <li><a href="../">../</a></li>
       <li><a href="./about/">about/</a></li>
-<li><a href="./assets/">assets/</a></li>
-<li><a href="./notes/">notes/</a></li>
-<li><a href="./projects/">projects/</a></li>
-<li><a href="./xDRAFTS/">xDRAFTS/</a></li>
+      <li><a href="./notes/">notes/</a></li>
+      <li><a href="./projects/">projects/</a></li>
     </ul>
   </body>
 </html>

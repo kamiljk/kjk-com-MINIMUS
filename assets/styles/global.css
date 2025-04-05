@@ -1,0 +1,81 @@
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  padding: 2em;
+  background: #ededed;
+  color: #000;
+  display: block; /* Remove centering */
+  flex-direction: column;
+  align-items: center; /* Center all child elements horizontally */
+  justify-content: center;
+  min-height: 100vh; /* Ensure full height for centering */
+  max-width: unset; /* Remove width restriction */
+  box-sizing: border-box; /* Include padding in width calculations */
+}
+
+body.dark {
+  background: #000; /* Ensure dark theme background */
+  color: #fff; /* Ensure dark theme text color */
+}
+
+header {
+  display: flex;
+  align-items: center; /* Vertically align items */
+  justify-content: space-between; /* Space out title and button */
+  padding: 1em;
+  border-bottom: 2px solid #000; /* Optional: Add a bottom border for separation */
+  gap: 1em; /* Add spacing between the logo and the button */
+}
+
+header h1 {
+  margin: 0; /* Remove default margin */
+  font-size: 2em; /* Default size for larger screens */
+  white-space: nowrap; /* Prevent the logo text from wrapping */
+}
+
+@media (max-width: 768px) {
+  header h1 {
+    font-size: 1.5em; /* Smaller size for tablets */
+  }
+}
+
+@media (max-width: 480px) {
+  header h1 {
+    font-size: 1.2em; /* Even smaller size for mobile devices */
+  }
+}
+
+header button {
+  font-size: 1em; /* Adjust button size */
+  padding: 0.5em 1em;
+  flex-shrink: 0; /* Prevent the button from shrinking */
+}
+
+a {
+  color: #000;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+h1 {
+  font-size: 2em;
+  margin-bottom: 1em;
+  text-transform: uppercase;
+  font-weight: bold;
+  border-bottom: 2px solid #000000;
+  padding-bottom: 0.5em;
+  text-align: unset; /* Remove text alignment to rely on flexbox centering */
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: unset; /* Remove text alignment to rely on flexbox centering */
+}
+
+li {
+  margin: 1em 0;
+}
